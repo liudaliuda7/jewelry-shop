@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { categories } from '@/data/mockData';
+import ImageWithFallback from './ImageWithFallback';
 
 export default function CategoryNav() {
   return (
@@ -14,7 +15,7 @@ export default function CategoryNav() {
               className="group"
             >
               <div className="relative overflow-hidden rounded-lg aspect-square mb-3">
-                <img
+                <ImageWithFallback
                   src={category.icon}
                   alt={category.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition duration-300"

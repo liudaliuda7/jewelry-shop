@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { banners } from '@/data/mockData';
+import ImageWithFallback from './ImageWithFallback';
 
 export default function Banner() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -36,7 +37,7 @@ export default function Banner() {
         {banners.map((banner) => (
           <div key={banner.id} className="w-full flex-shrink-0">
             <div className="relative h-64 md:h-96 lg:h-[500px]">
-              <img
+              <ImageWithFallback
                 src={banner.image}
                 alt={banner.title}
                 className="w-full h-full object-cover"

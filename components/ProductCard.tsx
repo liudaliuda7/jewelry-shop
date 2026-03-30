@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { Product } from '@/types';
+import ImageWithFallback from './ImageWithFallback';
 
 interface ProductCardProps {
   product: Product;
@@ -10,7 +11,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Link href={`/products/${product.id}`} className="group">
       <div className="relative overflow-hidden rounded-lg mb-3">
-        <img
+        <ImageWithFallback
           src={product.images[0]}
           alt={product.name}
           className="w-full aspect-square object-cover group-hover:scale-105 transition duration-300"

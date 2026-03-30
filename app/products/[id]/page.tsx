@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Star, ChevronLeft, ChevronRight, ShoppingCart, Heart, Share2 } from 'lucide-react';
 import { getProductById } from '@/data/mockData';
 import { useCart } from '@/context/CartContext';
+import ImageWithFallback from '@/components/ImageWithFallback';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -72,7 +73,7 @@ export default function ProductDetailPage() {
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         <div className="space-y-4">
           <div className="relative aspect-square overflow-hidden rounded-lg">
-            <img
+            <ImageWithFallback
               src={product.images[selectedImage]}
               alt={product.name}
               className="w-full h-full object-cover"
@@ -106,7 +107,7 @@ export default function ProductDetailPage() {
                 onClick={() => setSelectedImage(index)}
                 className={`relative aspect-square rounded-lg overflow-hidden border-2 transition ${selectedImage === index ? 'border-rose-500' : 'border-transparent'}`}
               >
-                <img src={image} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
+                <ImageWithFallback src={image} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
