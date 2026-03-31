@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Star, ChevronLeft, ChevronRight, ShoppingCart, Heart, Share2 } from 'lucide-react';
 import { getProductById } from '@/data/mockData';
@@ -20,6 +20,11 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState(product?.sizes[0] || '');
   const [quantity, setQuantity] = useState(1);
   const [showAddedToast, setShowAddedToast] = useState(false);
+
+  // 放大镜状态管理
+  const [showMagnifier, setShowMagnifier] = useState(false);
+  const [magnifierPosition, setMagnifierPosition] = useState({ x: 0, y: 0 });
+  const imageRef = useRef<HTMLDivElement>(null);
 
   if (!product) {
     return (
@@ -54,6 +59,25 @@ export default function ProductDetailPage() {
     setSelectedImage((prev) => (prev - 1 + product.images.length) % product.images.length);
   };
 
+  // 放大镜事件处理
+  const handleMouseEnter = () => {
+    setShowMagnifier(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowMagnifier(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!imageRef.current) return;
+
+    const rect = imageRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+
+    setMagnifierPosition({ x, y });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {showAddedToast && (
@@ -72,33 +96,66 @@ export default function ProductDetailPage() {
 
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         <div className="space-y-4">
-          <div className="relative aspect-square overflow-hidden rounded-lg">
-            <ImageWithFallback
-              src={product.images[selectedImage]}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-            <button
-              onClick={prevImage}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full hover:bg-opacity-100 transition"
+          {/* 主图区域 - 包含放大镜 */}
+          <div className="relative">
+            <div 
+              ref={imageRef}
+              className="relative aspect-square overflow-hidden rounded-lg"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              onMouseMove={handleMouseMove}
             >
-              <ChevronLeft size={24} />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full hover:bg-opacity-100 transition"
-            >
-              <ChevronRight size={24} />
-            </button>
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              {product.images.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-2 h-2 rounded-full ${selectedImage === index ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+              <ImageWithFallback
+                src={product.images[selectedImage]}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+              {/* 放大镜指示器 */}
+              {showMagnifier && (
+                <div 
+                  className="absolute border-2 border-black border-opacity-30 bg-black bg-opacity-10 pointer-events-none z-10"
+                  style={{
+                    width: '120px',
+                    height: '120px',
+                    left: `calc(${magnifierPosition.x * 100}% - 60px)`,
+                    top: `calc(${magnifierPosition.y * 100}% - 60px)`,
+                  }}
                 />
-              ))}
+              )}
+              <button
+                onClick={prevImage}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full hover:bg-opacity-100 transition"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full hover:bg-opacity-100 transition"
+              >
+                <ChevronRight size={24} />
+              </button>
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                {product.images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedImage(index)}
+                    className={`w-2 h-2 rounded-full ${selectedImage === index ? 'bg-white' : 'bg-white bg-opacity-50'}`}
+                  />
+                ))}
+              </div>
             </div>
+            
+            {/* 放大镜容器 */}
+            {showMagnifier && (
+              <div 
+                className="absolute top-0 left-full ml-4 w-96 h-96 overflow-hidden rounded-lg border-2 border-gray-200 shadow-lg hidden lg:block"
+                style={{
+                  backgroundImage: `url(${product.images[selectedImage]})`,
+                  backgroundSize: '250%',
+                  backgroundPosition: `${magnifierPosition.x * 100}% ${magnifierPosition.y * 100}%`,
+                }}
+              />
+            )}
           </div>
           <div className="grid grid-cols-4 gap-4">
             {product.images.map((image, index) => (
