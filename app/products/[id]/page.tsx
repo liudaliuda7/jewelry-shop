@@ -6,6 +6,7 @@ import { Star, ChevronLeft, ChevronRight, ShoppingCart, Heart, Share2 } from 'lu
 import { getProductById } from '@/data/mockData';
 import { useCart } from '@/context/CartContext';
 import ImageWithFallback from '@/components/ImageWithFallback';
+import ImageZoom from '@/components/ImageZoom';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -46,14 +47,6 @@ export default function ProductDetailPage() {
     router.push('/cart');
   };
 
-  const nextImage = () => {
-    setSelectedImage((prev) => (prev + 1) % product.images.length);
-  };
-
-  const prevImage = () => {
-    setSelectedImage((prev) => (prev - 1 + product.images.length) % product.images.length);
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {showAddedToast && (
@@ -72,34 +65,13 @@ export default function ProductDetailPage() {
 
       <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
         <div className="space-y-4">
-          <div className="relative aspect-square overflow-hidden rounded-lg">
-            <ImageWithFallback
-              src={product.images[selectedImage]}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-            <button
-              onClick={prevImage}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full hover:bg-opacity-100 transition"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <button
-              onClick={nextImage}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 p-2 rounded-full hover:bg-opacity-100 transition"
-            >
-              <ChevronRight size={24} />
-            </button>
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              {product.images.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`w-2 h-2 rounded-full ${selectedImage === index ? 'bg-white' : 'bg-white bg-opacity-50'}`}
-                />
-              ))}
-            </div>
-          </div>
+          <ImageZoom
+            images={product.images}
+            alt={product.name}
+            zoomLevel={2.5}
+            selectedImage={selectedImage}
+            onSelectedImageChange={setSelectedImage}
+          />
           <div className="grid grid-cols-4 gap-4">
             {product.images.map((image, index) => (
               <button
