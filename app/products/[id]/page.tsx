@@ -3,9 +3,10 @@
 import { useState, use } from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { Star, ShoppingCart, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ShoppingCart, Heart } from 'lucide-react';
 import { products } from '@/types/data';
 import { useCart } from '@/contexts/CartContext';
+import ImageZoom from '@/components/ImageZoom';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,41 +39,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
           <div className="grid md:grid-cols-2 gap-8 p-6">
             {/* 商品图片 */}
             <div>
-              {/* 主图 */}
-              <div className="relative aspect-square rounded-lg overflow-hidden mb-4">
-                <Image
-                  src={product.images[selectedImageIndex]}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                {/* 左右翻页按钮 */}
-                <button
-                  onClick={() =>
-                    setSelectedImageIndex(
-                      (prev) =>
-                        (prev - 1 + product.images.length) % product.images.length
-                    )
-                  }
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() =>
-                    setSelectedImageIndex(
-                      (prev) => (prev + 1) % product.images.length
-                    )
-                  }
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
+              {/* 主图 - 带放大镜功能 */}
+              <ImageZoom
+                images={product.images}
+                selectedImageIndex={selectedImageIndex}
+                onImageChange={setSelectedImageIndex}
+                alt={product.name}
+                zoomLevel={2.5}
+              />
 
               {/* 缩略图 */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 mt-4">
                 {product.images.map((image, index) => (
                   <button
                     key={index}
