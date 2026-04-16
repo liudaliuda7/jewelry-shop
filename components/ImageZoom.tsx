@@ -87,27 +87,40 @@ export default function ImageZoom({
         
         {isZooming && (
           <div
-            className="absolute border-2 border-rose-500 bg-rose-500 bg-opacity-10 pointer-events-none z-20"
+            className="absolute pointer-events-none z-20"
             style={{
               width: `${100 / zoomLevel}%`,
               height: `${100 / zoomLevel}%`,
               left: `${position.x * 100 - (50 / zoomLevel)}%`,
               top: `${position.y * 100 - (50 / zoomLevel)}%`,
             }}
-          />
+          >
+            <div className="absolute inset-0 border-2 border-rose-400/80 rounded-sm" />
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-200/20 to-pink-100/10" />
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-rose-500" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-rose-500" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-rose-500" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-rose-500" />
+          </div>
         )}
       </div>
 
       {isZooming && (
         <div
-          className="absolute top-0 left-full ml-4 w-80 h-80 rounded-lg overflow-hidden border border-gray-200 shadow-lg z-40 hidden lg:block"
+          className="absolute top-0 left-full ml-6 w-96 h-96 rounded-xl overflow-hidden z-40 hidden lg:block"
           style={{
             backgroundImage: `url(${images[selectedImageIndex]})`,
             backgroundSize: `${zoomLevel * 100}%`,
             backgroundPosition: `${position.x * 100}% ${position.y * 100}%`,
             backgroundRepeat: 'no-repeat',
           }}
-        />
+        >
+          <div className="absolute inset-0 border-2 border-rose-200 rounded-xl" />
+          <div className="absolute inset-0 shadow-xl" />
+          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-gray-600 font-medium">
+            放大 {zoomLevel}x
+          </div>
+        </div>
       )}
     </div>
   );
