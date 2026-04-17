@@ -10,23 +10,35 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cartCount } = useCart();
   const [displayCount, setDisplayCount] = useState(cartCount);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationKey, setAnimationKey] = useState(0);
   const [isFirstShow, setIsFirstShow] = useState(false);
   const prevCountRef = useRef(cartCount);
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      prevCountRef.current = cartCount;
+      return;
+    }
+
     if (cartCount !== prevCountRef.current) {
-      if (prevCountRef.current === 0 && cartCount > 0) {
-        setIsFirstShow(true);
-        setTimeout(() => setIsFirstShow(false), 500);
-      } else if (cartCount > 0) {
-        setIsAnimating(true);
-        setTimeout(() => setIsAnimating(false), 400);
-      }
+      const wasZero = prevCountRef.current === 0;
+      const nowPositive = cartCount > 0;
+      
       setDisplayCount(cartCount);
+      setAnimationKey((prev) => prev + 1);
+      
+      if (wasZero && nowPositive) {
+        setIsFirstShow(true);
+        setTimeout(() => setIsFirstShow(false), 700);
+      }
+      
       prevCountRef.current = cartCount;
     }
   }, [cartCount]);
+
+  const shouldAnimate = animationKey > 0 && cartCount > 0;
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -59,11 +71,12 @@ export default function Navbar() {
               <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
               {displayCount > 0 && (
                 <span
+                  key={animationKey}
                   className={`absolute -top-2 -right-2 bg-rose-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium ${
-                    isFirstShow
-                      ? 'animate-count-pop'
-                      : isAnimating
-                      ? 'animate-count-update'
+                    shouldAnimate
+                      ? isFirstShow
+                        ? 'animate-count-pop'
+                        : 'animate-count-update'
                       : ''
                   }`}
                 >
