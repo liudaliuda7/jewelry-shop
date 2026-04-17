@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { Star, ShoppingCart, Heart } from 'lucide-react';
 import { products } from '@/types/data';
 import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/contexts/ToastContext';
 import ImageZoom from '@/components/ImageZoom';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +18,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const { addToCart } = useCart();
+  const { showToast } = useToast();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSku, setSelectedSku] = useState(product.skus[0]);
   const [quantity, setQuantity] = useState(1);
@@ -28,8 +30,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   // 加入购物车
   const handleAddToCart = () => {
-    addToCart(product, selectedSku, quantity);
-    alert('已成功加入购物车！');
+    try {
+      addToCart(product, selectedSku, quantity);
+      showToast({
+        type: 'success',
+        title: '已成功加入购物车！',
+        description: `${product.name} × ${quantity} 件`,
+        duration: 3000,
+      });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: '加入购物车失败',
+        description: '请稍后重试',
+        duration: 3000,
+      });
+    }
   };
 
   return (
