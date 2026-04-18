@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/ProductCard';
 import ProductFilters from '@/components/ProductFilters';
+import ProductsSkeleton from '@/components/skeletons/ProductsSkeleton';
 import { products, categories } from '@/types/data';
 import { Product } from '@/types/data';
 
@@ -11,6 +12,7 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category');
 
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     categoryParam
   );
@@ -19,6 +21,14 @@ function ProductsContent() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
   const [sortBy, setSortBy] = useState<string>('default');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>(products);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     setSelectedCategory(searchParams.get('category'));
@@ -70,6 +80,10 @@ function ProductsContent() {
     setPriceRange([0, 5000]);
     setSortBy('default');
   };
+
+  if (isLoading) {
+    return <ProductsSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -129,9 +143,7 @@ function ProductsContent() {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-gray-500">加载中...</div>
-    </div>}>
+    <Suspense fallback={<ProductsSkeleton />}>
       <ProductsContent />
     </Suspense>
   );

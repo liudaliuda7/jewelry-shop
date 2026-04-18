@@ -1,19 +1,34 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Trash2, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import CartSkeleton from '@/components/skeletons/CartSkeleton';
 
 export default function CartPage() {
   const { cart, updateQuantity, removeFromCart, cartTotal, cartCount, clearCart } = useCart();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // 处理结算
   const handleCheckout = () => {
     router.push('/checkout');
   };
+
+  if (isLoading) {
+    return <CartSkeleton />;
+  }
 
   // 空状态
   if (cart.length === 0) {

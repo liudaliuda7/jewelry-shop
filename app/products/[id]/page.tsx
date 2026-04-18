@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Star, ShoppingCart, Heart } from 'lucide-react';
@@ -8,10 +8,20 @@ import { products } from '@/types/data';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import ImageZoom from '@/components/ImageZoom';
+import ProductDetailSkeleton from '@/components/skeletons/ProductDetailSkeleton';
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const product = products.find((p) => p.id === id);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!product) {
     notFound();
@@ -47,6 +57,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       });
     }
   };
+
+  if (isLoading) {
+    return <ProductDetailSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
