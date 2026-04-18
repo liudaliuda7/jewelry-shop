@@ -1,10 +1,28 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Carousel from '@/components/Carousel';
 import ProductCard from '@/components/ProductCard';
+import HomeSkeleton from '@/components/skeletons/HomeSkeleton';
 import { banners, categories, getHotProducts, brandStory } from '@/types/data';
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <HomeSkeleton />;
+  }
+
   const hotProducts = getHotProducts();
 
   return (
