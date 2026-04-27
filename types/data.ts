@@ -79,6 +79,27 @@ export interface Category {
   image: string;
 }
 
+export type AddressTag = 'home' | 'work' | 'default';
+
+export interface Address {
+  id: string;
+  userId: string;
+  name: string;
+  phone: string;
+  provinceCode: string;
+  provinceName: string;
+  cityCode: string;
+  cityName: string;
+  districtCode: string;
+  districtName: string;
+  address: string;
+  zipCode?: string;
+  tag?: AddressTag;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 分类数据
 export const categories: Category[] = [
   {

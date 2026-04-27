@@ -15,6 +15,7 @@ interface OrderContextType {
   getOrderById: (orderId: string) => Order | undefined;
   getOrdersByUserId: (userId: string) => Order[];
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
+  clearExpiredOrders: () => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -33,14 +34,38 @@ const generateOrderNo = (): string => {
   return `ORD${timestamp}${random}`;
 };
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const isOrderExpired = (order: Order): boolean => {
+  const createdAt = new Date(order.createdAt).getTime();
+  const now = Date.now();
+  return now - createdAt > SEVEN_DAYS_MS;
+};
+
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
+
+  const clearExpiredOrders = () => {
+    setOrders(prevOrders => {
+      const validOrders = prevOrders.filter(order => !isOrderExpired(order));
+      if (validOrders.length !== prevOrders.length) {
+        console.log(`清除了 ${prevOrders.length - validOrders.length} 个过期订单`);
+      }
+      return validOrders;
+    });
+  };
 
   useEffect(() => {
     const savedOrders = localStorage.getItem('jewelry_orders');
     if (savedOrders) {
       try {
-        setOrders(JSON.parse(savedOrders));
+        const parsedOrders: Order[] = JSON.parse(savedOrders);
+        const validOrders = parsedOrders.filter(order => !isOrderExpired(order));
+        setOrders(validOrders);
+        if (validOrders.length !== parsedOrders.length) {
+          localStorage.setItem('jewelry_orders', JSON.stringify(validOrders));
+          console.log(`清除了 ${parsedOrders.length - validOrders.length} 个过期订单`);
+        }
       } catch (e) {
         console.error('Failed to parse orders from localStorage:', e);
       }
@@ -50,6 +75,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('jewelry_orders', JSON.stringify(orders));
   }, [orders]);
+
+  useEffect(() => {
+    const interval = setInterval(clearExpiredOrders, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const createOrder = (
     items: OrderItem[],
@@ -100,6 +130,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     getOrderById,
     getOrdersByUserId,
     updateOrderStatus,
+    clearExpiredOrders,
   };
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
