@@ -9,7 +9,8 @@ import {
   Heart,
   ShoppingBag,
   CreditCard,
-  ArrowRight
+  ArrowRight,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrder } from '@/contexts/OrderContext';
@@ -53,6 +54,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
 
   const menuItems = [
     { id: 'profile', label: '个人设置', icon: Settings, path: '/user/profile' },
+    { id: 'addresses', label: '收货地址', icon: MapPin, path: '/user/addresses' },
     { id: 'orders', label: '我的订单', icon: ShoppingBag, path: '/user/orders', badge: ordersCount },
     { id: 'favorites', label: '我的收藏', icon: Heart, path: '/user/favorites' },
     { id: 'payments', label: '支付方式', icon: CreditCard, path: '/user/payments' },
@@ -60,6 +62,7 @@ export default function UserLayout({ children }: UserLayoutProps) {
 
   const getActiveTab = () => {
     if (pathname === '/user/profile' || pathname === '/user') return 'profile';
+    if (pathname === '/user/addresses') return 'addresses';
     if (pathname === '/user/orders') return 'orders';
     if (pathname === '/user/favorites') return 'favorites';
     if (pathname === '/user/payments') return 'payments';

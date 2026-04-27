@@ -11,17 +11,27 @@ import {
   WalletCards,
   MessageCircle,
   Building2,
-  Loader2
+  Loader2,
+  MapPin,
+  Home,
+  Building,
+  Star,
+  ChevronDown,
+  Plus,
+  X
 } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useOrder } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAddress } from '@/contexts/AddressContext';
 import { 
   getProvinces, 
   getCities, 
   getDistricts,
   PaymentMethod as PaymentMethodType,
-  OrderItem
+  OrderItem,
+  Address,
+  AddressTag
 } from '@/types/data';
 
 interface AddressForm {
@@ -67,10 +77,22 @@ const paymentMethods: {
   }
 ];
 
+const tagLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  home: { label: '家', icon: <Home className="w-3.5 h-3.5" />, color: 'text-rose-500' },
+  work: { label: '公司', icon: <Building className="w-3.5 h-3.5" />, color: 'text-blue-500' },
+  default: { label: '默认', icon: <Star className="w-3.5 h-3.5" />, color: 'text-amber-500' },
+};
+
+function getTagInfo(tag?: AddressTag) {
+  if (!tag) return null;
+  return tagLabels[tag] || null;
+}
+
 export default function CheckoutPage() {
   const { cart, cartTotal, clearCart } = useCart();
   const { createOrder } = useOrder();
   const { user } = useAuth();
+  const { addresses, getDefaultAddress } = useAddress();
   const router = useRouter();
   
   const [step, setStep] = useState<'address' | 'payment' | 'success'>('address');
@@ -97,9 +119,48 @@ export default function CheckoutPage() {
     zipCode: '',
   });
 
+  const [showAddressSelector, setShowAddressSelector] = useState(false);
+  const [selectedSavedAddress, setSelectedSavedAddress] = useState<Address | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
+
   useEffect(() => {
     setProvinces(getProvinces());
   }, []);
+
+  useEffect(() => {
+    const defaultAddr = getDefaultAddress();
+    if (defaultAddr) {
+      setSelectedSavedAddress(defaultAddr);
+      fillAddressFromSaved(defaultAddr);
+    }
+  }, [addresses]);
+
+  const fillAddressFromSaved = (savedAddress: Address) => {
+    setAddress({
+      name: savedAddress.name,
+      phone: savedAddress.phone,
+      provinceCode: savedAddress.provinceCode,
+      cityCode: savedAddress.cityCode,
+      districtCode: savedAddress.districtCode,
+      provinceName: savedAddress.provinceName,
+      cityName: savedAddress.cityName,
+      districtName: savedAddress.districtName,
+      address: savedAddress.address,
+      zipCode: savedAddress.zipCode || '',
+    });
+    setProvinceCode(savedAddress.provinceCode);
+    setCityCode(savedAddress.cityCode);
+    setDistrictCode(savedAddress.districtCode);
+    setCities(getCities(savedAddress.provinceCode));
+    setDistricts(getDistricts(savedAddress.provinceCode, savedAddress.cityCode));
+    setShowManualInput(false);
+  };
+
+  const handleSelectAddress = (savedAddress: Address) => {
+    setSelectedSavedAddress(savedAddress);
+    fillAddressFromSaved(savedAddress);
+    setShowAddressSelector(false);
+  };
 
   useEffect(() => {
     if (provinceCode) {
@@ -324,100 +385,178 @@ export default function CheckoutPage() {
 
         {step === 'address' && (
           <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                  收货地址
-                </h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-700 mb-2">收货人 *</label>
-                    <input
-                      type="text"
-                      value={address.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      placeholder="请输入收货人姓名"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2">手机号码 *</label>
-                    <input
-                      type="tel"
-                      value={address.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="请输入手机号码"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2">省份 *</label>
-                    <select
-                      value={provinceCode}
-                      onChange={(e) => setProvinceCode(e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    选择收货地址
+                  </h2>
+                  {addresses.length > 0 && (
+                    <button
+                      onClick={() => setShowAddressSelector(!showAddressSelector)}
+                      className="flex items-center gap-2 px-4 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                     >
-                      <option value="">请选择省份</option>
-                      {provinces.map((province) => (
-                        <option key={province.code} value={province.code}>
-                          {province.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2">城市 *</label>
-                    <select
-                      value={cityCode}
-                      onChange={(e) => setCityCode(e.target.value)}
-                      disabled={!provinceCode}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    >
-                      <option value="">请选择城市</option>
-                      {cities.map((city) => (
-                        <option key={city.code} value={city.code}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-gray-700 mb-2">区县 *</label>
-                    <select
-                      value={districtCode}
-                      onChange={(e) => setDistrictCode(e.target.value)}
-                      disabled={!cityCode}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    >
-                      <option value="">请选择区县</option>
-                      {districts.map((district) => (
-                        <option key={district.code} value={district.code}>
-                          {district.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-gray-700 mb-2">详细地址 *</label>
-                    <textarea
-                      value={address.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      placeholder="请输入详细地址（街道、门牌号等）"
-                      rows={3}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 mb-2">邮政编码</label>
-                    <input
-                      type="text"
-                      value={address.zipCode}
-                      onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                      placeholder="请输入邮政编码（选填）"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    />
-                  </div>
+                      <MapPin className="w-4 h-4" />
+                      选择已有地址
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showAddressSelector ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
                 </div>
+
+                {showAddressSelector && addresses.length > 0 && (
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-3 max-h-80 overflow-y-auto">
+                    {addresses.map((addr) => {
+                      const tagInfo = getTagInfo(addr.tag);
+                      const isSelected = selectedSavedAddress?.id === addr.id;
+                      return (
+                        <div
+                          key={addr.id}
+                          onClick={() => handleSelectAddress(addr)}
+                          className={`p-4 rounded-lg cursor-pointer transition-all border-2 ${
+                            isSelected
+                              ? 'border-rose-500 bg-rose-50'
+                              : 'border-gray-200 hover:border-rose-300 bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-grow">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="font-semibold text-gray-800">{addr.name}</span>
+                                <span className="text-gray-600">{addr.phone}</span>
+                                {addr.isDefault && (
+                                  <span className="px-2 py-0.5 bg-rose-600 text-white text-xs rounded-full flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-current" />
+                                    默认
+                                  </span>
+                                )}
+                                {tagInfo && (
+                                  <span className={`px-2 py-0.5 bg-gray-100 text-xs rounded-full flex items-center gap-1 ${tagInfo.color}`}>
+                                    {tagInfo.icon}
+                                    {tagInfo.label}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-gray-600 text-sm">
+                                {addr.provinceName} {addr.cityName} {addr.districtName} {addr.address}
+                                {addr.zipCode && ` (邮编: ${addr.zipCode})`}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <div className="ml-3">
+                                <div className="w-5 h-5 rounded-full bg-rose-600 flex items-center justify-center">
+                                  <CheckCircle className="w-4 h-4 text-white" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowManualInput(!showManualInput)}
+                  className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-rose-400 hover:text-rose-500 transition-colors mb-4"
+                >
+                  <Plus className="w-4 h-4" />
+                  {showManualInput ? '收起手动输入' : '新增收货地址'}
+                </button>
+
+                {(showManualInput || addresses.length === 0) && (
+                  <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="font-medium text-gray-800 mb-4">输入收货地址</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-gray-700 mb-2">收货人 *</label>
+                        <input
+                          type="text"
+                          value={address.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          placeholder="请输入收货人姓名"
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-700 mb-2">手机号码 *</label>
+                        <input
+                          type="tel"
+                          value={address.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          placeholder="请输入手机号码"
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-700 mb-2">省份 *</label>
+                        <select
+                          value={provinceCode}
+                          onChange={(e) => setProvinceCode(e.target.value)}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        >
+                          <option value="">请选择省份</option>
+                          {provinces.map((province) => (
+                            <option key={province.code} value={province.code}>
+                              {province.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-gray-700 mb-2">城市 *</label>
+                        <select
+                          value={cityCode}
+                          onChange={(e) => setCityCode(e.target.value)}
+                          disabled={!provinceCode}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        >
+                          <option value="">请选择城市</option>
+                          {cities.map((city) => (
+                            <option key={city.code} value={city.code}>
+                              {city.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-gray-700 mb-2">区县 *</label>
+                        <select
+                          value={districtCode}
+                          onChange={(e) => setDistrictCode(e.target.value)}
+                          disabled={!cityCode}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        >
+                          <option value="">请选择区县</option>
+                          {districts.map((district) => (
+                            <option key={district.code} value={district.code}>
+                              {district.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-gray-700 mb-2">详细地址 *</label>
+                        <textarea
+                          value={address.address}
+                          onChange={(e) => handleInputChange('address', e.target.value)}
+                          placeholder="请输入详细地址（街道、门牌号等）"
+                          rows={3}
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-700 mb-2">邮政编码</label>
+                        <input
+                          type="text"
+                          value={address.zipCode}
+                          onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                          placeholder="请输入邮政编码（选填）"
+                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -502,12 +641,16 @@ export default function CheckoutPage() {
                 </h2>
 
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium text-gray-800 mb-2">收货地址</h3>
+                  <h3 className="font-medium text-gray-800 mb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-rose-500" />
+                    收货地址
+                  </h3>
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="font-medium text-gray-800">{address.name}</span>
+                    <span className="text-gray-600">{address.phone}</span>
+                  </div>
                   <p className="text-gray-600">
                     {address.provinceName} {address.cityName} {address.districtName} {address.address}
-                  </p>
-                  <p className="text-gray-600">
-                    {address.name} {address.phone}
                   </p>
                 </div>
 
