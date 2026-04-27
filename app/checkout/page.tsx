@@ -122,6 +122,7 @@ export default function CheckoutPage() {
   const [showAddressSelector, setShowAddressSelector] = useState(false);
   const [selectedSavedAddress, setSelectedSavedAddress] = useState<Address | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     setProvinces(getProvinces());
@@ -132,7 +133,11 @@ export default function CheckoutPage() {
     if (defaultAddr) {
       setSelectedSavedAddress(defaultAddr);
       fillAddressFromSaved(defaultAddr);
+      setShowManualInput(false);
+    } else if (addresses.length === 0 && !isInitialized) {
+      setShowManualInput(true);
     }
+    setIsInitialized(true);
   }, [addresses]);
 
   const fillAddressFromSaved = (savedAddress: Address) => {
@@ -153,7 +158,6 @@ export default function CheckoutPage() {
     setDistrictCode(savedAddress.districtCode);
     setCities(getCities(savedAddress.provinceCode));
     setDistricts(getDistricts(savedAddress.provinceCode, savedAddress.cityCode));
-    setShowManualInput(false);
   };
 
   const handleSelectAddress = (savedAddress: Address) => {
@@ -391,17 +395,48 @@ export default function CheckoutPage() {
                   <h2 className="text-xl font-semibold text-gray-800">
                     选择收货地址
                   </h2>
-                  {addresses.length > 0 && (
-                    <button
-                      onClick={() => setShowAddressSelector(!showAddressSelector)}
-                      className="flex items-center gap-2 px-4 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      选择已有地址
-                      <ChevronDown className={`w-4 h-4 transition-transform ${showAddressSelector ? 'rotate-180' : ''}`} />
-                    </button>
-                  )}
                 </div>
+
+                {selectedSavedAddress && (
+                  <div className="mb-6 p-4 bg-rose-50 rounded-lg border-2 border-rose-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="font-semibold text-gray-800">{selectedSavedAddress.name}</span>
+                          <span className="text-gray-600">{selectedSavedAddress.phone}</span>
+                          {selectedSavedAddress.isDefault && (
+                            <span className="px-2 py-0.5 bg-rose-600 text-white text-xs rounded-full flex items-center gap-1">
+                              <Star className="w-3 h-3 fill-current" />
+                              默认
+                            </span>
+                          )}
+                          {getTagInfo(selectedSavedAddress.tag) && (
+                            <span className={`px-2 py-0.5 bg-white text-xs rounded-full flex items-center gap-1 ${getTagInfo(selectedSavedAddress.tag)!.color}`}>
+                              {getTagInfo(selectedSavedAddress.tag)!.icon}
+                              {getTagInfo(selectedSavedAddress.tag)!.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-gray-600 text-sm">
+                          {selectedSavedAddress.provinceName} {selectedSavedAddress.cityName} {selectedSavedAddress.districtName} {selectedSavedAddress.address}
+                          {selectedSavedAddress.zipCode && ` (邮编: ${selectedSavedAddress.zipCode})`}
+                        </p>
+                      </div>
+                      <CheckCircle className="w-5 h-5 text-rose-600 flex-shrink-0 ml-4" />
+                    </div>
+                  </div>
+                )}
+
+                {addresses.length > 0 && (
+                  <button
+                    onClick={() => setShowAddressSelector(!showAddressSelector)}
+                    className="flex items-center gap-2 px-4 py-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mb-4"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    {selectedSavedAddress ? '更换地址' : '选择已有地址'}
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showAddressSelector ? 'rotate-180' : ''}`} />
+                  </button>
+                )}
 
                 {showAddressSelector && addresses.length > 0 && (
                   <div className="mb-6 p-4 bg-gray-50 rounded-lg space-y-3 max-h-80 overflow-y-auto">
@@ -463,7 +498,7 @@ export default function CheckoutPage() {
                   {showManualInput ? '收起手动输入' : '新增收货地址'}
                 </button>
 
-                {(showManualInput || addresses.length === 0) && (
+                {showManualInput && (
                   <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
                     <h3 className="font-medium text-gray-800 mb-4">输入收货地址</h3>
                     <div className="grid md:grid-cols-2 gap-4">
