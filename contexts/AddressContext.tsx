@@ -32,6 +32,20 @@ const isAddressExpired = (address: Address): boolean => {
   return now - createdAt > SEVEN_DAYS_MS;
 };
 
+const isAddressDuplicate = (
+  existingAddr: Address,
+  newAddr: Omit<Address, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+): boolean => {
+  return (
+    existingAddr.name === newAddr.name &&
+    existingAddr.phone === newAddr.phone &&
+    existingAddr.provinceCode === newAddr.provinceCode &&
+    existingAddr.cityCode === newAddr.cityCode &&
+    existingAddr.districtCode === newAddr.districtCode &&
+    existingAddr.address === newAddr.address
+  );
+};
+
 export function AddressProvider({ children }: { children: ReactNode }) {
   const [addresses, setAddresses] = useState<Address[]>([]);
 
@@ -77,6 +91,16 @@ export function AddressProvider({ children }: { children: ReactNode }) {
   };
 
   const addAddress = (addressData: Omit<Address, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
+    const existingDuplicate = addresses.find(addr => isAddressDuplicate(addr, addressData));
+    
+    if (existingDuplicate) {
+      console.log('地址已存在，跳过重复保存');
+      if (addressData.isDefault && !existingDuplicate.isDefault) {
+        setDefaultAddress(existingDuplicate.id);
+      }
+      return;
+    }
+
     const now = new Date().toISOString();
     const newAddress: Address = {
       ...addressData,
