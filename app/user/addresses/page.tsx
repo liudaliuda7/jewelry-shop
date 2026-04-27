@@ -13,7 +13,9 @@ import {
   Home, 
   Building, 
   Star,
-  ChevronDown
+  ChevronDown,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import { useAddress } from '@/contexts/AddressContext';
 import { Address, AddressTag } from '@/types/data';
@@ -64,6 +66,11 @@ export default function AddressesPage() {
   const [provinces, setProvinces] = useState<{ code: string; name: string }[]>([]);
   const [cities, setCities] = useState<{ code: string; name: string }[]>([]);
   const [districts, setDistricts] = useState<{ code: string; name: string }[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'error' | 'info'>('error');
 
   useEffect(() => {
     setProvinces(getProvinces());
@@ -145,7 +152,9 @@ export default function AddressesPage() {
 
   const handleSubmit = () => {
     if (!formData.name || !formData.phone || !formData.provinceCode || !formData.cityCode || !formData.districtCode || !formData.address) {
-      alert('请填写完整的地址信息');
+      setAlertMessage('请填写完整的地址信息');
+      setAlertType('error');
+      setShowAlert(true);
       return;
     }
 
@@ -163,9 +172,21 @@ export default function AddressesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('确定要删除这个地址吗？')) {
-      deleteAddress(id);
+    setDeletingAddressId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingAddressId) {
+      deleteAddress(deletingAddressId);
     }
+    setShowDeleteConfirm(false);
+    setDeletingAddressId(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeletingAddressId(null);
   };
 
   const getTagInfo = (tag?: AddressTag) => {
@@ -485,6 +506,73 @@ export default function AddressesPage() {
                 className="px-8 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors font-medium"
               >
                 {editingAddress ? '保存修改' : '保存地址'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={cancelDelete}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
+                <AlertTriangle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 text-center mb-2">
+                确认删除
+              </h3>
+              <p className="text-gray-500 text-center mb-6">
+                确定要删除这个地址吗？此操作无法撤销。
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelDelete}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  确认删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowAlert(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className={`flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full ${
+                alertType === 'error' ? 'bg-amber-100' : 'bg-blue-100'
+              }`}>
+                {alertType === 'error' ? (
+                  <AlertTriangle className={`w-8 h-8 ${alertType === 'error' ? 'text-amber-600' : 'text-blue-600'}`} />
+                ) : (
+                  <Info className="w-8 h-8 text-blue-600" />
+                )}
+              </div>
+              <p className="text-gray-700 text-center mb-6">
+                {alertMessage}
+              </p>
+              <button
+                onClick={() => setShowAlert(false)}
+                className="w-full px-6 py-3 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors font-medium"
+              >
+                知道了
               </button>
             </div>
           </div>
