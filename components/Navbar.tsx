@@ -10,7 +10,8 @@ import {
   User, 
   Settings, 
   LogOut, 
-  ChevronDown 
+  ChevronDown,
+  ShoppingBag
 } from 'lucide-react';
 import Image from 'next/image';
 import { categories } from '@/types/data';
@@ -143,6 +144,16 @@ export default function Navbar() {
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                       </div>
                       <div className="py-1">
+                        <Link
+                          href="/orders"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>我的订单</span>
+                        </Link>
+                      </div>
+                      <div className="py-1 border-t">
                         <Link
                           href="/profile"
                           onClick={() => setIsUserMenuOpen(false)}
