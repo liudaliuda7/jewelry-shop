@@ -635,7 +635,7 @@ export default function CheckoutPage() {
                   返回首页
                 </button>
                 <button
-                  onClick={() => router.push('/orders')}
+                  onClick={() => router.push('/user/orders')}
                   className="px-8 py-3 border-2 border-rose-600 text-rose-600 rounded-lg hover:bg-rose-50 transition-colors font-medium"
                 >
                   查看订单

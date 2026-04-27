@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { 
-  User, 
   ChevronDown,
   ChevronUp,
   Package,
@@ -20,7 +19,7 @@ import {
   Eye
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrder, updateOrderStatus } from '@/contexts/OrderContext';
+import { useOrder } from '@/contexts/OrderContext';
 import { Order, OrderStatus, PaymentMethod } from '@/types/data';
 
 const statusConfig: Record<OrderStatus, { 
@@ -28,41 +27,47 @@ const statusConfig: Record<OrderStatus, {
   color: string; 
   bgColor: string; 
   textColor: string;
+  borderColor: string;
   icon: React.ReactNode 
 }> = {
   pending: { 
     label: '待支付', 
-    color: 'border-orange-400', 
+    color: 'text-orange-600', 
     bgColor: 'bg-orange-50',
     textColor: 'text-orange-600',
+    borderColor: 'border-orange-400',
     icon: <Clock className="w-6 h-6" />
   },
   paid: { 
     label: '已支付', 
-    color: 'border-blue-400', 
+    color: 'text-blue-600', 
     bgColor: 'bg-blue-50',
     textColor: 'text-blue-600',
+    borderColor: 'border-blue-400',
     icon: <CheckCircle2 className="w-6 h-6" />
   },
   shipped: { 
     label: '已发货', 
-    color: 'border-purple-400', 
+    color: 'text-purple-600', 
     bgColor: 'bg-purple-50',
     textColor: 'text-purple-600',
+    borderColor: 'border-purple-400',
     icon: <Truck className="w-6 h-6" />
   },
   delivered: { 
     label: '已完成', 
-    color: 'border-green-400', 
+    color: 'text-green-600', 
     bgColor: 'bg-green-50',
     textColor: 'text-green-600',
+    borderColor: 'border-green-400',
     icon: <Package className="w-6 h-6" />
   },
   cancelled: { 
     label: '已取消', 
-    color: 'border-gray-400', 
+    color: 'text-gray-600', 
     bgColor: 'bg-gray-50',
     textColor: 'text-gray-600',
+    borderColor: 'border-gray-400',
     icon: <X className="w-6 h-6" />
   },
 };
@@ -103,7 +108,7 @@ function OrderCard({ order }: { order: Order }) {
   const canCancel = order.status === 'pending' || order.status === 'paid';
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border-l-4 ${status.color} overflow-hidden mb-6 transition-all hover:shadow-md`}>
+    <div className={`bg-white rounded-xl shadow-sm border-l-4 ${status.borderColor} overflow-hidden mb-6 transition-all hover:shadow-md`}>
       <div className={`p-4 ${status.bgColor} border-b flex items-center justify-between`}>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
@@ -115,7 +120,7 @@ function OrderCard({ order }: { order: Order }) {
             <span className="text-sm text-gray-600">{formatDate(order.createdAt)}</span>
           </div>
         </div>
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${status.bgColor} ${status.textColor} border-2 ${status.color}`}>
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${status.bgColor} ${status.textColor} border-2 ${status.borderColor}`}>
           {status.icon}
           <span className="font-bold text-lg">{status.label}</span>
         </div>
@@ -255,29 +260,12 @@ export default function OrdersPage() {
   const [activeFilter, setActiveFilter] = useState<OrderStatus | 'all'>('all');
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
+    if (user) {
+      setOrders(getOrdersByUserId(user.id));
     }
-    setOrders(getOrdersByUserId(user.id));
-  }, [user, getOrdersByUserId, router]);
+  }, [user, getOrdersByUserId]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <User className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 mb-4">请先登录</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="inline-block px-6 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
-          >
-            去登录
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   const filteredOrders = activeFilter === 'all' 
     ? orders 
@@ -292,16 +280,14 @@ export default function OrdersPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-2">我的订单</h1>
-          <p className="text-rose-100">查看和管理您的所有订单</p>
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">我的订单</h3>
+          <p className="text-gray-500 text-sm">查看和管理您的所有订单</p>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-xl shadow-sm p-2 mb-6 inline-flex flex-wrap gap-2">
+        <div className="bg-gray-50 rounded-xl p-2 mb-6 inline-flex flex-wrap gap-2">
           {filterTabs.map((tab) => {
             const status = tab.id !== 'all' ? statusConfig[tab.id] : null;
             return (
@@ -311,7 +297,7 @@ export default function OrdersPage() {
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all font-medium ${
                   activeFilter === tab.id
                     ? 'bg-rose-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    : 'text-gray-600 hover:bg-white'
                 }`}
               >
                 {status && <span className={activeFilter === tab.id ? 'text-white' : status.textColor}>{status.icon}</span>}
@@ -331,13 +317,13 @@ export default function OrdersPage() {
         </div>
 
         {filteredOrders.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-16 text-center">
+          <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
               <ShoppingBag className="w-12 h-12 text-gray-300" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            <h4 className="text-xl font-semibold text-gray-800 mb-2">
               {activeFilter === 'all' ? '暂无订单' : `暂无${statusConfig[activeFilter].label}订单`}
-            </h3>
+            </h4>
             <p className="text-gray-500 mb-8">
               {activeFilter === 'all' 
                 ? '您还没有任何订单记录，快去挑选心仪的商品吧' 

@@ -145,7 +145,7 @@ export default function Navbar() {
                       </div>
                       <div className="py-1">
                         <Link
-                          href="/orders"
+                          href="/user/orders"
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
@@ -155,7 +155,7 @@ export default function Navbar() {
                       </div>
                       <div className="py-1 border-t">
                         <Link
-                          href="/profile"
+                          href="/user/profile"
                           onClick={() => setIsUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
