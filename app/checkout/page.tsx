@@ -10,7 +10,8 @@ import {
   Banknote,
   WalletCards,
   MessageCircle,
-  Building2
+  Building2,
+  Loader2
 } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useOrder } from '@/contexts/OrderContext';
@@ -247,8 +248,31 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-8 relative">
+      {isProcessing && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white rounded-2xl p-12 shadow-2xl text-center max-w-sm mx-4">
+            <div className="relative w-28 h-28 mx-auto mb-6">
+              <div className="absolute inset-0 border-4 border-rose-200 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-transparent border-t-rose-600 rounded-full animate-spin"></div>
+              <div className="absolute inset-4 border-4 border-transparent border-t-rose-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+              <div className="absolute inset-8 border-4 border-transparent border-t-rose-300 rounded-full animate-spin" style={{ animationDuration: '2s' }}></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-rose-600 animate-pulse" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">支付处理中</h3>
+            <p className="text-gray-500 mb-6">请稍候，正在验证您的支付...</p>
+            <div className="flex justify-center gap-1">
+              <div className="w-2 h-2 bg-rose-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-rose-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-rose-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`max-w-7xl mx-auto px-4 ${isProcessing ? 'pointer-events-none opacity-50' : ''}`}>
         <h1 className="text-3xl font-bold text-gray-800 mb-8">确认订单</h1>
 
         <div className="flex items-center justify-center mb-8">
@@ -611,7 +635,7 @@ export default function CheckoutPage() {
                   返回首页
                 </button>
                 <button
-                  onClick={() => router.push('/profile')}
+                  onClick={() => router.push('/orders')}
                   className="px-8 py-3 border-2 border-rose-600 text-rose-600 rounded-lg hover:bg-rose-50 transition-colors font-medium"
                 >
                   查看订单
