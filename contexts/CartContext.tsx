@@ -40,9 +40,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (existingItemIndex !== -1) {
         // 商品已存在，增加数量
-        const newCart = [...prevCart];
-        newCart[existingItemIndex].quantity += quantity;
-        return newCart;
+        // 使用不可变更新：创建新对象而不是修改现有对象
+        return prevCart.map((item, index) => {
+          if (index === existingItemIndex) {
+            return {
+              ...item,
+              quantity: item.quantity + quantity
+            };
+          }
+          return item;
+        });
       } else {
         // 添加新商品
         return [...prevCart, {
