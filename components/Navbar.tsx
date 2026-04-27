@@ -22,7 +22,6 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { cartCount } = useCart();
   const { user, logout } = useAuth();
-  const [displayCount, setDisplayCount] = useState(cartCount);
   const [animationKey, setAnimationKey] = useState(0);
   const [isFirstShow, setIsFirstShow] = useState(false);
   const prevCountRef = useRef(cartCount);
@@ -40,7 +39,6 @@ export default function Navbar() {
       const wasZero = prevCountRef.current === 0;
       const nowPositive = cartCount > 0;
       
-      setDisplayCount(cartCount);
       setAnimationKey((prev) => prev + 1);
       
       if (wasZero && nowPositive) {
@@ -100,7 +98,7 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             <Link href="/cart" className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
-              {displayCount > 0 && (
+              {cartCount > 0 && (
                 <span
                   key={animationKey}
                   className={`absolute -top-2 -right-2 bg-rose-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium ${
@@ -111,7 +109,7 @@ export default function Navbar() {
                       : ''
                   }`}
                 >
-                  {displayCount > 99 ? '99+' : displayCount}
+                  {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
             </Link>
@@ -138,29 +136,31 @@ export default function Navbar() {
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border z-50">
-                    <div className="px-4 py-3 border-b">
-                      <p className="text-sm font-medium text-gray-800">{user.username}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                    </div>
-                    <div className="py-1">
-                      <Link
-                        href="/profile"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span>个人设置</span>
-                      </Link>
-                    </div>
-                    <div className="py-1 border-t mt-1">
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>退出登录</span>
-                      </button>
+                  <div className="absolute right-0 top-full pt-2 w-48 z-50">
+                    <div className="bg-white rounded-lg shadow-lg border">
+                      <div className="px-4 py-3 border-b">
+                        <p className="text-sm font-medium text-gray-800">{user.username}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      <div className="py-1">
+                        <Link
+                          href="/profile"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span>个人设置</span>
+                        </Link>
+                      </div>
+                      <div className="py-1 border-t mt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>退出登录</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
