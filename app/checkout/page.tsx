@@ -1,54 +1,159 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { CreditCard, CheckCircle } from 'lucide-react';
+import { 
+  CreditCard, 
+  CheckCircle,
+  ChevronRight,
+  Banknote,
+  WalletCards,
+  MessageCircle,
+  Building2
+} from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
+import { useOrder } from '@/contexts/OrderContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  getProvinces, 
+  getCities, 
+  getDistricts,
+  PaymentMethod as PaymentMethodType,
+  OrderItem
+} from '@/types/data';
 
 interface AddressForm {
   name: string;
   phone: string;
-  province: string;
-  city: string;
-  district: string;
+  provinceCode: string;
+  cityCode: string;
+  districtCode: string;
+  provinceName: string;
+  cityName: string;
+  districtName: string;
   address: string;
   zipCode: string;
 }
 
+const paymentMethods: { 
+  id: PaymentMethodType; 
+  name: string; 
+  icon: React.ReactNode; 
+  color: string;
+  description: string;
+}[] = [
+  {
+    id: 'alipay',
+    name: '支付宝',
+    icon: <WalletCards className="w-6 h-6" />,
+    color: 'text-blue-500',
+    description: '使用支付宝快捷支付'
+  },
+  {
+    id: 'wechat',
+    name: '微信支付',
+    icon: <MessageCircle className="w-6 h-6" />,
+    color: 'text-green-500',
+    description: '使用微信扫码支付'
+  },
+  {
+    id: 'bankcard',
+    name: '银行卡',
+    icon: <Building2 className="w-6 h-6" />,
+    color: 'text-orange-500',
+    description: '使用银行卡在线支付'
+  }
+];
+
 export default function CheckoutPage() {
   const { cart, cartTotal, clearCart } = useCart();
+  const { createOrder } = useOrder();
+  const { user } = useAuth();
   const router = useRouter();
+  
   const [step, setStep] = useState<'address' | 'payment' | 'success'>('address');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentMethodType>('alipay');
+  const [provinceCode, setProvinceCode] = useState('');
+  const [cityCode, setCityCode] = useState('');
+  const [districtCode, setDistrictCode] = useState('');
+  const [provinces, setProvinces] = useState<{ code: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ code: string; name: string }[]>([]);
+  const [districts, setDistricts] = useState<{ code: string; name: string }[]>([]);
+  const [createdOrderNo, setCreatedOrderNo] = useState('');
+  
   const [address, setAddress] = useState<AddressForm>({
     name: '',
     phone: '',
-    province: '',
-    city: '',
-    district: '',
+    provinceCode: '',
+    cityCode: '',
+    districtCode: '',
+    provinceName: '',
+    cityName: '',
+    districtName: '',
     address: '',
     zipCode: '',
   });
 
-  // 处理地址表单变化
-  const handleAddressChange = (field: keyof AddressForm, value: string) => {
+  useEffect(() => {
+    setProvinces(getProvinces());
+  }, []);
+
+  useEffect(() => {
+    if (provinceCode) {
+      const province = provinces.find(p => p.code === provinceCode);
+      setAddress(prev => ({ 
+        ...prev, 
+        provinceCode,
+        provinceName: province?.name || ''
+      }));
+      setCities(getCities(provinceCode));
+      setCityCode('');
+      setDistrictCode('');
+      setDistricts([]);
+    }
+  }, [provinceCode, provinces]);
+
+  useEffect(() => {
+    if (cityCode && provinceCode) {
+      const city = cities.find(c => c.code === cityCode);
+      setAddress(prev => ({ 
+        ...prev, 
+        cityCode,
+        cityName: city?.name || ''
+      }));
+      setDistricts(getDistricts(provinceCode, cityCode));
+      setDistrictCode('');
+    }
+  }, [cityCode, provinceCode, cities]);
+
+  useEffect(() => {
+    if (districtCode) {
+      const district = districts.find(d => d.code === districtCode);
+      setAddress(prev => ({ 
+        ...prev, 
+        districtCode,
+        districtName: district?.name || ''
+      }));
+    }
+  }, [districtCode, districts]);
+
+  const handleInputChange = (field: keyof AddressForm, value: string) => {
     setAddress((prev) => ({ ...prev, [field]: value }));
   };
 
-  // 验证地址表单
   const validateAddress = () => {
     return (
       address.name.trim() !== '' &&
       address.phone.trim() !== '' &&
-      address.province.trim() !== '' &&
-      address.city.trim() !== '' &&
-      address.district.trim() !== '' &&
+      address.provinceCode !== '' &&
+      address.cityCode !== '' &&
+      address.districtCode !== '' &&
       address.address.trim() !== ''
     );
   };
 
-  // 处理下一步
   const handleNextStep = () => {
     if (step === 'address' && validateAddress()) {
       setStep('payment');
@@ -57,23 +162,55 @@ export default function CheckoutPage() {
     }
   };
 
-  // 处理模拟支付
   const handlePayment = () => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
     setIsProcessing(true);
-    // 模拟支付过程
+    
     setTimeout(() => {
+      const orderItems: OrderItem[] = cart.map((item) => ({
+        id: item.id,
+        productId: item.product.id,
+        productName: item.product.name,
+        productImage: item.product.images[0],
+        skuId: item.sku.id,
+        skuMaterial: item.sku.material,
+        skuColor: item.sku.color,
+        skuSize: item.sku.size,
+        price: item.sku.price,
+        quantity: item.quantity,
+      }));
+
+      const newOrder = createOrder(
+        orderItems,
+        cartTotal,
+        selectedPayment,
+        {
+          name: address.name,
+          phone: address.phone,
+          province: address.provinceName,
+          city: address.cityName,
+          district: address.districtName,
+          address: address.address,
+          zipCode: address.zipCode,
+        },
+        user.id
+      );
+
+      setCreatedOrderNo(newOrder.orderNo);
       setIsProcessing(false);
       setStep('success');
       clearCart();
     }, 2000);
   };
 
-  // 返回首页
   const handleBackToHome = () => {
     router.push('/');
   };
 
-  // 购物车为空时重定向到购物车页面
   if (cart.length === 0 && step !== 'success') {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
@@ -93,82 +230,76 @@ export default function CheckoutPage() {
     );
   }
 
+  const stepLabels = [
+    { step: 'address', label: '收货地址', num: 1 },
+    { step: 'payment', label: '支付', num: 2 },
+    { step: 'success', label: '完成', num: 3 },
+  ];
+
+  const getStepStatus = (currentStep: string, targetStep: string) => {
+    const steps = ['address', 'payment', 'success'];
+    const currentIndex = steps.indexOf(currentStep);
+    const targetIndex = steps.indexOf(targetStep);
+    
+    if (targetIndex < currentIndex) return 'done';
+    if (targetIndex === currentIndex) return 'active';
+    return 'pending';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-3xl font-bold text-gray-800 mb-8">确认订单</h1>
 
-        {/* 步骤指示器 */}
         <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                step === 'address' || step === 'payment' || step === 'success'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-gray-200 text-gray-500'
-              }`}
-            >
-              1
-            </div>
-            <span
-              className={`ml-2 ${
-                step === 'address' ? 'text-rose-600 font-medium' : 'text-gray-500'
-              }`}
-            >
-              收货地址
-            </span>
-          </div>
-          <div className="w-16 h-1 bg-gray-200 mx-4">
-            <div
-              className={`h-full ${
-                step === 'payment' || step === 'success' ? 'bg-rose-600' : 'bg-gray-200'
-              }`}
-            />
-          </div>
-          <div className="flex items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                step === 'payment' || step === 'success'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-gray-200 text-gray-500'
-              }`}
-            >
-              2
-            </div>
-            <span
-              className={`ml-2 ${
-                step === 'payment' ? 'text-rose-600 font-medium' : 'text-gray-500'
-              }`}
-            >
-              支付
-            </span>
-          </div>
-          <div className="w-16 h-1 bg-gray-200 mx-4">
-            <div
-              className={`h-full ${step === 'success' ? 'bg-rose-600' : 'bg-gray-200'}`}
-            />
-          </div>
-          <div className="flex items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                step === 'success' ? 'bg-rose-600 text-white' : 'bg-gray-200 text-gray-500'
-              }`}
-            >
-              3
-            </div>
-            <span
-              className={`ml-2 ${
-                step === 'success' ? 'text-rose-600 font-medium' : 'text-gray-500'
-              }`}
-            >
-              完成
-            </span>
-          </div>
+          {stepLabels.map((item, index) => {
+            const status = getStepStatus(step, item.step);
+            const isLast = index === stepLabels.length - 1;
+            
+            return (
+              <div key={item.step} className="flex items-center">
+                <div className="flex items-center">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                      status === 'active'
+                        ? 'bg-rose-600 text-white scale-110'
+                        : status === 'done'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}
+                  >
+                    {status === 'done' ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      item.num
+                    )}
+                  </div>
+                  <span
+                    className={`ml-2 font-medium ${
+                      status === 'active' ? 'text-rose-600' : status === 'done' ? 'text-gray-700' : 'text-gray-500'
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+                {!isLast && (
+                  <div className="w-16 h-1 bg-gray-200 mx-4 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        getStepStatus(step, stepLabels[index + 1].step) !== 'pending'
+                          ? 'bg-rose-600 w-full'
+                          : 'w-0'
+                      }`}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {step === 'address' && (
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* 地址表单 */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">
@@ -180,7 +311,7 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       value={address.name}
-                      onChange={(e) => handleAddressChange('name', e.target.value)}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
                       placeholder="请输入收货人姓名"
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />
@@ -190,7 +321,7 @@ export default function CheckoutPage() {
                     <input
                       type="tel"
                       value={address.phone}
-                      onChange={(e) => handleAddressChange('phone', e.target.value)}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
                       placeholder="请输入手机号码"
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />
@@ -198,49 +329,56 @@ export default function CheckoutPage() {
                   <div>
                     <label className="block text-gray-700 mb-2">省份 *</label>
                     <select
-                      value={address.province}
-                      onChange={(e) => handleAddressChange('province', e.target.value)}
+                      value={provinceCode}
+                      onChange={(e) => setProvinceCode(e.target.value)}
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                     >
                       <option value="">请选择省份</option>
-                      <option value="北京市">北京市</option>
-                      <option value="上海市">上海市</option>
-                      <option value="广东省">广东省</option>
-                      <option value="浙江省">浙江省</option>
-                      <option value="江苏省">江苏省</option>
+                      {provinces.map((province) => (
+                        <option key={province.code} value={province.code}>
+                          {province.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">城市 *</label>
                     <select
-                      value={address.city}
-                      onChange={(e) => handleAddressChange('city', e.target.value)}
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      value={cityCode}
+                      onChange={(e) => setCityCode(e.target.value)}
+                      disabled={!provinceCode}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
                       <option value="">请选择城市</option>
-                      <option value="上海市">上海市</option>
-                      <option value="广州市">广州市</option>
-                      <option value="深圳市">深圳市</option>
-                      <option value="杭州市">杭州市</option>
-                      <option value="南京市">南京市</option>
+                      {cities.map((city) => (
+                        <option key={city.code} value={city.code}>
+                          {city.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-gray-700 mb-2">区县 *</label>
-                    <input
-                      type="text"
-                      value={address.district}
-                      onChange={(e) => handleAddressChange('district', e.target.value)}
-                      placeholder="请输入区县"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                    />
+                    <select
+                      value={districtCode}
+                      onChange={(e) => setDistrictCode(e.target.value)}
+                      disabled={!cityCode}
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      <option value="">请选择区县</option>
+                      {districts.map((district) => (
+                        <option key={district.code} value={district.code}>
+                          {district.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-gray-700 mb-2">详细地址 *</label>
                     <textarea
                       value={address.address}
-                      onChange={(e) => handleAddressChange('address', e.target.value)}
-                      placeholder="请输入详细地址"
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      placeholder="请输入详细地址（街道、门牌号等）"
                       rows={3}
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
                     />
@@ -250,8 +388,8 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       value={address.zipCode}
-                      onChange={(e) => handleAddressChange('zipCode', e.target.value)}
-                      placeholder="请输入邮政编码"
+                      onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                      placeholder="请输入邮政编码（选填）"
                       className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
                     />
                   </div>
@@ -259,14 +397,12 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 订单摘要 */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">
                   订单摘要
                 </h2>
 
-                {/* 商品列表 */}
                 <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                   {cart.map((item) => (
                     <div key={item.id} className="flex gap-3">
@@ -284,6 +420,7 @@ export default function CheckoutPage() {
                         </h3>
                         <p className="text-xs text-gray-500">
                           {item.sku.material} · {item.sku.color}
+                          {item.sku.size && ` · ${item.sku.size}`}
                         </p>
                         <div className="flex justify-between mt-1">
                           <span className="text-sm text-rose-600">
@@ -298,7 +435,6 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
-                {/* 价格计算 */}
                 <div className="space-y-2 mb-6">
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>商品小计</span>
@@ -316,17 +452,17 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* 下一步按钮 */}
                 <button
                   onClick={handleNextStep}
                   disabled={!validateAddress()}
-                  className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                  className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
                     validateAddress()
                       ? 'bg-rose-600 text-white hover:bg-rose-700'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   下一步
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -335,41 +471,57 @@ export default function CheckoutPage() {
 
         {step === 'payment' && (
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* 支付信息 */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">
                   支付方式
                 </h2>
 
-                {/* 地址预览 */}
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                   <h3 className="font-medium text-gray-800 mb-2">收货地址</h3>
                   <p className="text-gray-600">
-                    {address.province} {address.city} {address.district}{' '}
-                    {address.address}
+                    {address.provinceName} {address.cityName} {address.districtName} {address.address}
                   </p>
                   <p className="text-gray-600">
                     {address.name} {address.phone}
                   </p>
                 </div>
 
-                {/* 模拟支付选项 */}
-                <div className="space-y-4">
-                  <div className="border-2 border-rose-600 rounded-lg p-4 cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="w-8 h-8 text-rose-600" />
-                      <div>
-                        <h3 className="font-medium text-gray-800">模拟支付</h3>
-                        <p className="text-sm text-gray-500">
-                          点击确认支付按钮模拟支付过程
-                        </p>
+                <div className="space-y-3">
+                  {paymentMethods.map((method) => (
+                    <div
+                      key={method.id}
+                      onClick={() => setSelectedPayment(method.id)}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                        selectedPayment === method.id
+                          ? 'border-rose-600 bg-rose-50'
+                          : 'border-gray-200 hover:border-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`${method.color}`}>
+                          {method.icon}
+                        </div>
+                        <div className="flex-grow">
+                          <h3 className="font-medium text-gray-800">{method.name}</h3>
+                          <p className="text-sm text-gray-500">{method.description}</p>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            selectedPayment === method.id
+                              ? 'border-rose-600'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {selectedPayment === method.id && (
+                            <div className="w-3 h-3 rounded-full bg-rose-600" />
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* 支付按钮 */}
                 <button
                   onClick={handleNextStep}
                   disabled={isProcessing}
@@ -382,7 +534,7 @@ export default function CheckoutPage() {
                     </>
                   ) : (
                     <>
-                      <CreditCard className="w-5 h-5" />
+                      <Banknote className="w-5 h-5" />
                       确认支付 ¥{cartTotal}
                     </>
                   )}
@@ -390,7 +542,6 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* 订单摘要 */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">
@@ -426,24 +577,29 @@ export default function CheckoutPage() {
           <div className="max-w-2xl mx-auto">
             <div className="bg-white rounded-lg shadow-md p-12 text-center">
               <div className="flex justify-center mb-6">
-                <CheckCircle className="w-24 h-24 text-green-500" />
+                <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center">
+                  <CheckCircle className="w-16 h-16 text-green-500" />
+                </div>
               </div>
               <h2 className="text-3xl font-bold text-gray-800 mb-4">
                 支付成功！
               </h2>
               <p className="text-gray-600 mb-2">感谢您的购买</p>
               <p className="text-gray-500 mb-8">
-                订单号：ORD{Date.now().toString().slice(-10)}
+                订单号：{createdOrderNo}
               </p>
 
-              <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                <h3 className="font-semibold text-gray-800 mb-4">收货信息</h3>
-                <p className="text-gray-600">
-                  {address.province} {address.city} {address.district}{' '}
-                  {address.address}
+              <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
+                <h3 className="font-semibold text-gray-800 mb-4 text-center">收货信息</h3>
+                <p className="text-gray-600 mb-2">
+                  <span className="text-gray-500">收货人：</span>{address.name}
+                </p>
+                <p className="text-gray-600 mb-2">
+                  <span className="text-gray-500">联系电话：</span>{address.phone}
                 </p>
                 <p className="text-gray-600">
-                  {address.name} {address.phone}
+                  <span className="text-gray-500">收货地址：</span>
+                  {address.provinceName} {address.cityName} {address.districtName} {address.address}
                 </p>
               </div>
 
@@ -455,10 +611,10 @@ export default function CheckoutPage() {
                   返回首页
                 </button>
                 <button
-                  onClick={() => router.push('/products')}
+                  onClick={() => router.push('/profile')}
                   className="px-8 py-3 border-2 border-rose-600 text-rose-600 rounded-lg hover:bg-rose-50 transition-colors font-medium"
                 >
-                  继续购物
+                  查看订单
                 </button>
               </div>
             </div>
