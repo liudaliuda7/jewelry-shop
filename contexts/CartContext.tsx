@@ -3,6 +3,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem, Product, SKU } from '@/types/data';
 
+interface CartStorage {
+  items: CartItem[];
+  updatedAt: string;
+}
+
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product, sku: SKU, quantity: number) => void;
@@ -11,25 +16,91 @@ interface CartContextType {
   clearCart: () => void;
   cartTotal: number;
   cartCount: number;
+  clearExpiredCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const isCartExpired = (cartStorage: CartStorage): boolean => {
+  const updatedAt = new Date(cartStorage.updatedAt).getTime();
+  const now = Date.now();
+  return now - updatedAt > SEVEN_DAYS_MS;
+};
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  const clearExpiredCart = () => {
+    setCart([]);
+  };
 
   // 从localStorage加载购物车数据
   useEffect(() => {
     const savedCart = localStorage.getItem('jewelry-cart');
     if (savedCart) {
-      setCart(JSON.parse(savedCart));
+      try {
+        const parsedData = JSON.parse(savedCart);
+        if (parsedData && typeof parsedData === 'object' && 'items' in parsedData) {
+          const cartStorage = parsedData as CartStorage;
+          if (!isCartExpired(cartStorage)) {
+            setCart(cartStorage.items);
+          } else {
+            console.log('购物车已过期，已清除');
+            localStorage.removeItem('jewelry-cart');
+          }
+        } else {
+          const oldCart = parsedData as CartItem[];
+          const now = new Date().toISOString();
+          const cartStorage: CartStorage = {
+            items: oldCart,
+            updatedAt: now
+          };
+          localStorage.setItem('jewelry-cart', JSON.stringify(cartStorage));
+          setCart(oldCart);
+        }
+      } catch (e) {
+        console.error('Failed to parse cart from localStorage:', e);
+        setCart([]);
+      }
     }
   }, []);
 
   // 保存购物车数据到localStorage
   useEffect(() => {
-    localStorage.setItem('jewelry-cart', JSON.stringify(cart));
+    const now = new Date().toISOString();
+    const cartStorage: CartStorage = {
+      items: cart,
+      updatedAt: now
+    };
+    localStorage.setItem('jewelry-cart', JSON.stringify(cartStorage));
   }, [cart]);
+
+  // 每小时检查一次过期
+  useEffect(() => {
+    const checkExpired = () => {
+      const savedCart = localStorage.getItem('jewelry-cart');
+      if (savedCart) {
+        try {
+          const parsedData = JSON.parse(savedCart);
+          if (parsedData && typeof parsedData === 'object' && 'items' in parsedData) {
+            const cartStorage = parsedData as CartStorage;
+            if (isCartExpired(cartStorage)) {
+              console.log('购物车已过期，已清除');
+              localStorage.removeItem('jewelry-cart');
+              setCart([]);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to check cart expiration:', e);
+        }
+      }
+    };
+
+    const interval = setInterval(checkExpired, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 添加商品到购物车
   const addToCart = (product: Product, sku: SKU, quantity: number) => {
@@ -97,7 +168,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateQuantity,
       clearCart,
       cartTotal,
-      cartCount
+      cartCount,
+      clearExpiredCart
     }}>
       {children}
     </CartContext.Provider>

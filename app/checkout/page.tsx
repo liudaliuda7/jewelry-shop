@@ -159,6 +159,7 @@ export default function CheckoutPage() {
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [hoveredTagId, setHoveredTagId] = useState<string | null>(null);
+  const [isRestoringAddress, setIsRestoringAddress] = useState(false);
 
   useEffect(() => {
     setProvinces(getProvinces());
@@ -176,6 +177,8 @@ export default function CheckoutPage() {
   }, [isInitialized]);
 
   const fillAddressFromSaved = (savedAddress: Address) => {
+    setIsRestoringAddress(true);
+    
     setFormData({
       name: savedAddress.name,
       phone: savedAddress.phone,
@@ -190,6 +193,13 @@ export default function CheckoutPage() {
       tag: savedAddress.tag,
       isDefault: savedAddress.isDefault,
     });
+    
+    setCities(getCities(savedAddress.provinceCode));
+    setDistricts(getDistricts(savedAddress.provinceCode, savedAddress.cityCode));
+    
+    setTimeout(() => {
+      setIsRestoringAddress(false);
+    }, 0);
   };
 
   const handleSelectAddress = (savedAddress: Address) => {
@@ -199,16 +209,28 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    if (formData.provinceCode) {
+    if (formData.provinceCode && !isRestoringAddress) {
       const province = provinces.find(p => p.code === formData.provinceCode);
       setFormData(prev => ({ 
         ...prev, 
         provinceName: province?.name || ''
       }));
-      setCities(getCities(formData.provinceCode));
-      setDistricts([]);
+      const newCities = getCities(formData.provinceCode);
+      setCities(newCities);
+      
+      const hasMatchingCity = newCities.some(c => c.code === formData.cityCode);
+      if (!hasMatchingCity) {
+        setFormData(prev => ({ 
+          ...prev, 
+          cityCode: '', 
+          cityName: '', 
+          districtCode: '', 
+          districtName: ''
+        }));
+        setDistricts([]);
+      }
     }
-  }, [formData.provinceCode, provinces]);
+  }, [formData.provinceCode, provinces, isRestoringAddress]);
 
   useEffect(() => {
     if (formData.cityCode && formData.provinceCode) {
@@ -217,9 +239,12 @@ export default function CheckoutPage() {
         ...prev, 
         cityName: city?.name || ''
       }));
-      setDistricts(getDistricts(formData.provinceCode, formData.cityCode));
+      if (!isRestoringAddress) {
+        setDistricts(getDistricts(formData.provinceCode, formData.cityCode));
+        setFormData(prev => ({ ...prev, districtCode: '', districtName: '' }));
+      }
     }
-  }, [formData.cityCode, formData.provinceCode, cities]);
+  }, [formData.cityCode, formData.provinceCode, cities, isRestoringAddress]);
 
   useEffect(() => {
     if (formData.districtCode) {
@@ -233,6 +258,20 @@ export default function CheckoutPage() {
 
   const handleFormInputChange = (field: keyof AddressForm, value: string | boolean | AddressTag | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const canProceed = () => {
+    if (selectedSavedAddress) {
+      return true;
+    }
+    return (
+      formData.name.trim() !== '' &&
+      formData.phone.trim() !== '' &&
+      formData.provinceCode !== '' &&
+      formData.cityCode !== '' &&
+      formData.districtCode !== '' &&
+      formData.address.trim() !== ''
+    );
   };
 
   const validateAddress = () => {
@@ -303,7 +342,7 @@ export default function CheckoutPage() {
   };
 
   const handleNextStep = () => {
-    if (step === 'address' && validateAddress()) {
+    if (step === 'address' && canProceed()) {
       setStep('payment');
     } else if (step === 'payment') {
       handlePayment();
@@ -912,9 +951,9 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={handleNextStep}
-                  disabled={!validateAddress()}
+                  disabled={!canProceed()}
                   className={`w-full py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                    validateAddress()
+                    canProceed()
                       ? 'bg-rose-600 text-white hover:bg-rose-700'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
@@ -941,11 +980,11 @@ export default function CheckoutPage() {
                     收货地址
                   </h3>
                   <div className="flex items-center gap-3 mb-1">
-                    <span className="font-medium text-gray-800">{address.name}</span>
-                    <span className="text-gray-600">{address.phone}</span>
+                    <span className="font-medium text-gray-800">{formData.name}</span>
+                    <span className="text-gray-600">{formData.phone}</span>
                   </div>
                   <p className="text-gray-600">
-                    {address.provinceName} {address.cityName} {address.districtName} {address.address}
+                    {formData.provinceName} {formData.cityName} {formData.districtName} {formData.address}
                   </p>
                 </div>
 
@@ -1054,14 +1093,14 @@ export default function CheckoutPage() {
               <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
                 <h3 className="font-semibold text-gray-800 mb-4 text-center">收货信息</h3>
                 <p className="text-gray-600 mb-2">
-                  <span className="text-gray-500">收货人：</span>{address.name}
+                  <span className="text-gray-500">收货人：</span>{formData.name}
                 </p>
                 <p className="text-gray-600 mb-2">
-                  <span className="text-gray-500">联系电话：</span>{address.phone}
+                  <span className="text-gray-500">联系电话：</span>{formData.phone}
                 </p>
                 <p className="text-gray-600">
                   <span className="text-gray-500">收货地址：</span>
-                  {address.provinceName} {address.cityName} {address.districtName} {address.address}
+                  {formData.provinceName} {formData.cityName} {formData.districtName} {formData.address}
                 </p>
               </div>
 
