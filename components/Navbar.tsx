@@ -11,12 +11,142 @@ import {
   Settings, 
   LogOut, 
   ChevronDown,
-  ShoppingBag
+  ShoppingBag,
+  ChevronRight
 } from 'lucide-react';
 import Image from 'next/image';
-import { categories } from '@/types/data';
+import { categories, products, Product, Category } from '@/types/data';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
+
+interface SubCategory {
+  id: string;
+  name: string;
+}
+
+interface CategoryDropdownData {
+  category: Category;
+  subCategories: SubCategory[];
+  hotProducts: Product[];
+}
+
+function getCategoryDropdownData(categoryId: string): CategoryDropdownData | null {
+  const category = categories.find(c => c.id === categoryId);
+  if (!category) return null;
+
+  const categoryProducts = products.filter(p => p.category === categoryId);
+  const uniqueStyles = [...new Set(categoryProducts.map(p => p.style))];
+  
+  const subCategories: SubCategory[] = uniqueStyles.map((style, index) => ({
+    id: `${categoryId}-style-${index}`,
+    name: style
+  }));
+
+  const hotProducts = categoryProducts
+    .filter(p => p.isHot)
+    .slice(0, 4);
+
+  return {
+    category,
+    subCategories,
+    hotProducts
+  };
+}
+
+interface NavDropdownProps {
+  categoryId: string;
+  isOpen: boolean;
+  isAnimating: boolean;
+}
+
+function NavDropdown({ categoryId, isOpen, isAnimating }: NavDropdownProps) {
+  const dropdownData = getCategoryDropdownData(categoryId);
+  
+  if (!dropdownData) return null;
+  
+  const { category, subCategories, hotProducts } = dropdownData;
+
+  if (!isOpen && !isAnimating) return null;
+
+  return (
+    <div 
+      className={`absolute left-1/2 -translate-x-1/2 top-full pt-2 w-[720px] z-50 ${
+        isOpen ? 'animate-dropdown-in' : 'animate-dropdown-out pointer-events-none'
+      }`}
+    >
+      <div className="bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden">
+        <div className="flex">
+          <div className="w-1/3 bg-gray-50 p-6 border-r border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">
+              {category.icon} {category.name}
+            </h3>
+            <ul className="space-y-1">
+              {subCategories.map((sub) => (
+                <li key={sub.id}>
+                  <Link
+                    href={`/products?category=${categoryId}&style=${encodeURIComponent(sub.name)}`}
+                    className="block px-3 py-2 text-sm text-gray-600 hover:text-rose-600 hover:bg-white rounded-md transition-colors"
+                  >
+                    <span>{sub.name}</span>
+                  </Link>
+                </li>
+              ))}
+              <li className="pt-2 mt-2 border-t border-gray-200">
+                <Link
+                  href={`/products?category=${categoryId}`}
+                  className="flex items-center justify-between px-3 py-2 text-sm font-medium text-rose-600 hover:bg-white rounded-md transition-colors"
+                >
+                  查看全部 {category.name}
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div className="w-2/3 p-6">
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">
+              热门推荐
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {hotProducts.map((product) => (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.id}`}
+                  className="group flex gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <div className="relative w-16 h-16 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+                    <Image
+                      src={product.images[0]}
+                      alt={product.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm text-gray-800 font-medium truncate group-hover:text-rose-600 transition-colors">
+                      {product.name}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                      {product.style} · {product.material}
+                    </p>
+                    <p className="text-sm font-semibold text-rose-600 mt-1">
+                      ¥{product.price.toLocaleString()}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {hotProducts.length === 0 && (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                暂无热门商品
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -28,6 +158,10 @@ export default function Navbar() {
   const prevCountRef = useRef(cartCount);
   const isFirstMount = useRef(true);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [isDropdownAnimating, setIsDropdownAnimating] = useState(false);
+  const dropdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isFirstMount.current) {
@@ -62,6 +196,29 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleMouseEnter = (categoryId: string) => {
+    if (dropdownTimerRef.current) {
+      clearTimeout(dropdownTimerRef.current);
+      dropdownTimerRef.current = null;
+    }
+    
+    if (hoveredCategory !== categoryId) {
+      setIsDropdownAnimating(true);
+    }
+    
+    setHoveredCategory(categoryId);
+  };
+
+  const handleMouseLeave = () => {
+    dropdownTimerRef.current = setTimeout(() => {
+      setIsDropdownAnimating(true);
+      setTimeout(() => {
+        setHoveredCategory(null);
+        setIsDropdownAnimating(false);
+      }, 150);
+    }, 100);
+  };
+
   const shouldAnimate = animationKey > 0 && cartCount > 0;
 
   const handleLogout = () => {
@@ -80,13 +237,29 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center space-x-8">
             {categories.map((cat) => (
-              <Link
+              <div
                 key={cat.id}
-                href={`/products?category=${cat.id}`}
-                className="text-gray-700 hover:text-rose-600 transition-colors"
+                className="relative"
+                onMouseEnter={() => handleMouseEnter(cat.id)}
+                onMouseLeave={handleMouseLeave}
               >
-                {cat.name}
-              </Link>
+                <Link
+                  href={`/products?category=${cat.id}`}
+                  className={`flex items-center gap-1 py-4 text-gray-700 hover:text-rose-600 transition-colors ${
+                    hoveredCategory === cat.id ? 'text-rose-600' : ''
+                  }`}
+                >
+                  {cat.name}
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                    hoveredCategory === cat.id ? 'rotate-180' : ''
+                  }`} />
+                </Link>
+                <NavDropdown 
+                  categoryId={cat.id} 
+                  isOpen={hoveredCategory === cat.id}
+                  isAnimating={isDropdownAnimating && hoveredCategory === cat.id}
+                />
+              </div>
             ))}
             <Link
               href="/products"
