@@ -18,12 +18,17 @@ import {
   Star,
   ChevronDown,
   Plus,
-  X
+  X,
+  User,
+  Phone,
+  Hash,
+  Check
 } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useOrder } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddress } from '@/contexts/AddressContext';
+import { useTag } from '@/contexts/TagContext';
 import { 
   getProvinces, 
   getCities, 
@@ -31,21 +36,63 @@ import {
   PaymentMethod as PaymentMethodType,
   OrderItem,
   Address,
-  AddressTag
+  AddressTag,
+  CustomTag
 } from '@/types/data';
 
 interface AddressForm {
   name: string;
   phone: string;
   provinceCode: string;
-  cityCode: string;
-  districtCode: string;
   provinceName: string;
+  cityCode: string;
   cityName: string;
+  districtCode: string;
   districtName: string;
   address: string;
   zipCode: string;
+  tag: AddressTag | undefined;
+  isDefault: boolean;
 }
+
+interface TagColor {
+  border: string;
+  bg: string;
+  text: string;
+}
+
+const tagColorSchemes: TagColor[] = [
+  { border: 'border-rose-400', bg: 'bg-rose-50', text: 'text-rose-600' },
+  { border: 'border-blue-400', bg: 'bg-blue-50', text: 'text-blue-600' },
+  { border: 'border-green-400', bg: 'bg-green-50', text: 'text-green-600' },
+  { border: 'border-purple-400', bg: 'bg-purple-50', text: 'text-purple-600' },
+  { border: 'border-orange-400', bg: 'bg-orange-50', text: 'text-orange-600' },
+  { border: 'border-teal-400', bg: 'bg-teal-50', text: 'text-teal-600' },
+];
+
+const getTagColor = (index: number): TagColor => {
+  return tagColorSchemes[index % tagColorSchemes.length];
+};
+
+const tagOptions: { value: AddressTag | undefined; label: string }[] = [
+  { value: 'home', label: '家' },
+  { value: 'work', label: '公司' },
+];
+
+const initialFormData: AddressForm = {
+  name: '',
+  phone: '',
+  provinceCode: '',
+  provinceName: '',
+  cityCode: '',
+  cityName: '',
+  districtCode: '',
+  districtName: '',
+  address: '',
+  zipCode: '',
+  tag: undefined,
+  isDefault: false,
+};
 
 const paymentMethods: { 
   id: PaymentMethodType; 
@@ -92,56 +139,44 @@ export default function CheckoutPage() {
   const { cart, cartTotal, clearCart } = useCart();
   const { createOrder } = useOrder();
   const { user } = useAuth();
-  const { addresses, getDefaultAddress } = useAddress();
+  const { addresses, getDefaultAddress, addAddress } = useAddress();
+  const { customTags, addTag } = useTag();
   const router = useRouter();
   
   const [step, setStep] = useState<'address' | 'payment' | 'success'>('address');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentMethodType>('alipay');
-  const [provinceCode, setProvinceCode] = useState('');
-  const [cityCode, setCityCode] = useState('');
-  const [districtCode, setDistrictCode] = useState('');
   const [provinces, setProvinces] = useState<{ code: string; name: string }[]>([]);
   const [cities, setCities] = useState<{ code: string; name: string }[]>([]);
   const [districts, setDistricts] = useState<{ code: string; name: string }[]>([]);
   const [createdOrderNo, setCreatedOrderNo] = useState('');
   
-  const [address, setAddress] = useState<AddressForm>({
-    name: '',
-    phone: '',
-    provinceCode: '',
-    cityCode: '',
-    districtCode: '',
-    provinceName: '',
-    cityName: '',
-    districtName: '',
-    address: '',
-    zipCode: '',
-  });
-
+  const [formData, setFormData] = useState<AddressForm>({ ...initialFormData });
   const [showAddressSelector, setShowAddressSelector] = useState(false);
   const [selectedSavedAddress, setSelectedSavedAddress] = useState<Address | null>(null);
-  const [showManualInput, setShowManualInput] = useState(false);
+  const [showAddAddressForm, setShowAddAddressForm] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [hoveredTagId, setHoveredTagId] = useState<string | null>(null);
 
   useEffect(() => {
     setProvinces(getProvinces());
   }, []);
 
   useEffect(() => {
-    const defaultAddr = getDefaultAddress();
-    if (defaultAddr) {
-      setSelectedSavedAddress(defaultAddr);
-      fillAddressFromSaved(defaultAddr);
-      setShowManualInput(false);
-    } else if (addresses.length === 0 && !isInitialized) {
-      setShowManualInput(true);
+    if (!isInitialized) {
+      const defaultAddr = getDefaultAddress();
+      if (defaultAddr) {
+        setSelectedSavedAddress(defaultAddr);
+        fillAddressFromSaved(defaultAddr);
+      }
+      setIsInitialized(true);
     }
-    setIsInitialized(true);
-  }, [addresses]);
+  }, [isInitialized]);
 
   const fillAddressFromSaved = (savedAddress: Address) => {
-    setAddress({
+    setFormData({
       name: savedAddress.name,
       phone: savedAddress.phone,
       provinceCode: savedAddress.provinceCode,
@@ -152,12 +187,9 @@ export default function CheckoutPage() {
       districtName: savedAddress.districtName,
       address: savedAddress.address,
       zipCode: savedAddress.zipCode || '',
+      tag: savedAddress.tag,
+      isDefault: savedAddress.isDefault,
     });
-    setProvinceCode(savedAddress.provinceCode);
-    setCityCode(savedAddress.cityCode);
-    setDistrictCode(savedAddress.districtCode);
-    setCities(getCities(savedAddress.provinceCode));
-    setDistricts(getDistricts(savedAddress.provinceCode, savedAddress.cityCode));
   };
 
   const handleSelectAddress = (savedAddress: Address) => {
@@ -167,57 +199,107 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    if (provinceCode) {
-      const province = provinces.find(p => p.code === provinceCode);
-      setAddress(prev => ({ 
+    if (formData.provinceCode) {
+      const province = provinces.find(p => p.code === formData.provinceCode);
+      setFormData(prev => ({ 
         ...prev, 
-        provinceCode,
         provinceName: province?.name || ''
       }));
-      setCities(getCities(provinceCode));
-      setCityCode('');
-      setDistrictCode('');
+      setCities(getCities(formData.provinceCode));
       setDistricts([]);
     }
-  }, [provinceCode, provinces]);
+  }, [formData.provinceCode, provinces]);
 
   useEffect(() => {
-    if (cityCode && provinceCode) {
-      const city = cities.find(c => c.code === cityCode);
-      setAddress(prev => ({ 
+    if (formData.cityCode && formData.provinceCode) {
+      const city = cities.find(c => c.code === formData.cityCode);
+      setFormData(prev => ({ 
         ...prev, 
-        cityCode,
         cityName: city?.name || ''
       }));
-      setDistricts(getDistricts(provinceCode, cityCode));
-      setDistrictCode('');
+      setDistricts(getDistricts(formData.provinceCode, formData.cityCode));
     }
-  }, [cityCode, provinceCode, cities]);
+  }, [formData.cityCode, formData.provinceCode, cities]);
 
   useEffect(() => {
-    if (districtCode) {
-      const district = districts.find(d => d.code === districtCode);
-      setAddress(prev => ({ 
+    if (formData.districtCode) {
+      const district = districts.find(d => d.code === formData.districtCode);
+      setFormData(prev => ({ 
         ...prev, 
-        districtCode,
         districtName: district?.name || ''
       }));
     }
-  }, [districtCode, districts]);
+  }, [formData.districtCode, districts]);
 
-  const handleInputChange = (field: keyof AddressForm, value: string) => {
-    setAddress((prev) => ({ ...prev, [field]: value }));
+  const handleFormInputChange = (field: keyof AddressForm, value: string | boolean | AddressTag | undefined) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const validateAddress = () => {
     return (
-      address.name.trim() !== '' &&
-      address.phone.trim() !== '' &&
-      address.provinceCode !== '' &&
-      address.cityCode !== '' &&
-      address.districtCode !== '' &&
-      address.address.trim() !== ''
+      formData.name.trim() !== '' &&
+      formData.phone.trim() !== '' &&
+      formData.provinceCode !== '' &&
+      formData.cityCode !== '' &&
+      formData.districtCode !== '' &&
+      formData.address.trim() !== ''
     );
+  };
+
+  const getTagInfoForDisplay = (tag?: AddressTag) => {
+    if (!tag) return null;
+    const found = tagOptions.find(t => t.value === tag);
+    if (found) return { ...found, isPreset: true };
+    const customTag = customTags.find(t => t.id === tag || t.name === tag);
+    if (customTag) {
+      return { value: customTag.id, label: customTag.name, isPreset: false };
+    }
+    return null;
+  };
+
+  const handleAddNewTag = () => {
+    if (newTagName.trim()) {
+      addTag(newTagName.trim());
+      setNewTagName('');
+      setIsAddingTag(false);
+    }
+  };
+
+  const handleCancelAddTag = () => {
+    setNewTagName('');
+    setIsAddingTag(false);
+  };
+
+  const handleSaveNewAddress = () => {
+    if (!validateAddress()) return;
+    
+    const newAddressData = {
+      name: formData.name,
+      phone: formData.phone,
+      provinceCode: formData.provinceCode,
+      provinceName: formData.provinceName,
+      cityCode: formData.cityCode,
+      cityName: formData.cityName,
+      districtCode: formData.districtCode,
+      districtName: formData.districtName,
+      address: formData.address,
+      zipCode: formData.zipCode,
+      tag: formData.tag,
+      isDefault: addresses.length === 0,
+    };
+    
+    const newAddresses = addAddress(newAddressData);
+    
+    if (newAddresses && newAddresses.length > 0) {
+      const latestAddress = newAddresses[newAddresses.length - 1];
+      setSelectedSavedAddress(latestAddress);
+      fillAddressFromSaved(latestAddress);
+    }
+    
+    setShowAddAddressForm(false);
+    setFormData({ ...initialFormData });
+    setCities([]);
+    setDistricts([]);
   };
 
   const handleNextStep = () => {
@@ -255,13 +337,13 @@ export default function CheckoutPage() {
         cartTotal,
         selectedPayment,
         {
-          name: address.name,
-          phone: address.phone,
-          province: address.provinceName,
-          city: address.cityName,
-          district: address.districtName,
-          address: address.address,
-          zipCode: address.zipCode,
+          name: formData.name,
+          phone: formData.phone,
+          province: formData.provinceName,
+          city: formData.cityName,
+          district: formData.districtName,
+          address: formData.address,
+          zipCode: formData.zipCode,
         },
         user.id
       );
@@ -491,107 +573,285 @@ export default function CheckoutPage() {
                 )}
 
                 <button
-                  onClick={() => setShowManualInput(!showManualInput)}
+                  onClick={() => {
+                    if (showAddAddressForm) {
+                      setShowAddAddressForm(false);
+                    } else {
+                      setFormData({ ...initialFormData });
+                      setCities([]);
+                      setDistricts([]);
+                      setShowAddAddressForm(true);
+                    }
+                  }}
                   className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-rose-400 hover:text-rose-500 transition-colors mb-4"
                 >
                   <Plus className="w-4 h-4" />
-                  {showManualInput ? '收起手动输入' : '新增收货地址'}
+                  {showAddAddressForm ? '收起' : '新增收货地址'}
                 </button>
 
-                {showManualInput && (
-                  <div className="p-6 bg-gray-50 rounded-lg border border-gray-200">
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    showAddAddressForm ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                  }`}
+                >
+                  <div className="p-6 bg-gray-50 rounded-lg border border-gray-200 mb-4">
                     <h3 className="font-medium text-gray-800 mb-4">输入收货地址</h3>
-                    <div className="grid md:grid-cols-2 gap-4">
+                    
+                    <div className="grid md:grid-cols-2 gap-4 mb-6">
                       <div>
-                        <label className="block text-gray-700 mb-2">收货人 *</label>
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                          <User className="w-4 h-4" />
+                          收货人 <span className="text-rose-500">*</span>
+                        </label>
                         <input
                           type="text"
-                          value={address.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          value={formData.name}
+                          onChange={(e) => handleFormInputChange('name', e.target.value)}
                           placeholder="请输入收货人姓名"
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
                         />
                       </div>
                       <div>
-                        <label className="block text-gray-700 mb-2">手机号码 *</label>
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                          <Phone className="w-4 h-4" />
+                          手机号码 <span className="text-rose-500">*</span>
+                        </label>
                         <input
                           type="tel"
-                          value={address.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          value={formData.phone}
+                          onChange={(e) => handleFormInputChange('phone', e.target.value)}
                           placeholder="请输入手机号码"
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 mb-2">省份 *</label>
-                        <select
-                          value={provinceCode}
-                          onChange={(e) => setProvinceCode(e.target.value)}
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
-                        >
-                          <option value="">请选择省份</option>
-                          {provinces.map((province) => (
-                            <option key={province.code} value={province.code}>
-                              {province.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 mb-2">城市 *</label>
-                        <select
-                          value={cityCode}
-                          onChange={(e) => setCityCode(e.target.value)}
-                          disabled={!provinceCode}
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        >
-                          <option value="">请选择城市</option>
-                          {cities.map((city) => (
-                            <option key={city.code} value={city.code}>
-                              {city.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-gray-700 mb-2">区县 *</label>
-                        <select
-                          value={districtCode}
-                          onChange={(e) => setDistrictCode(e.target.value)}
-                          disabled={!cityCode}
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        >
-                          <option value="">请选择区县</option>
-                          {districts.map((district) => (
-                            <option key={district.code} value={district.code}>
-                              {district.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-gray-700 mb-2">详细地址 *</label>
-                        <textarea
-                          value={address.address}
-                          onChange={(e) => handleInputChange('address', e.target.value)}
-                          placeholder="请输入详细地址（街道、门牌号等）"
-                          rows={3}
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 mb-2">邮政编码</label>
-                        <input
-                          type="text"
-                          value={address.zipCode}
-                          onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                          placeholder="请输入邮政编码（选填）"
-                          className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-4 mb-6">
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            省份/直辖市 <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={formData.provinceCode}
+                            onChange={(e) => handleFormInputChange('provinceCode', e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none appearance-none bg-white"
+                          >
+                            <option value="">请选择省份</option>
+                            {provinces.map((province) => (
+                              <option key={province.code} value={province.code}>
+                                {province.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            城市 <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={formData.cityCode}
+                            onChange={(e) => handleFormInputChange('cityCode', e.target.value)}
+                            disabled={!formData.provinceCode}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">请选择城市</option>
+                            {cities.map((city) => (
+                              <option key={city.code} value={city.code}>
+                                {city.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            区县 <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={formData.districtCode}
+                            onChange={(e) => handleFormInputChange('districtCode', e.target.value)}
+                            disabled={!formData.cityCode}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">请选择区县</option>
+                            {districts.map((district) => (
+                              <option key={district.code} value={district.code}>
+                                {district.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          详细地址 <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                          value={formData.address}
+                          onChange={(e) => handleFormInputChange('address', e.target.value)}
+                          placeholder="请输入详细地址（街道、门牌号等）"
+                          rows={3}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none resize-none"
+                        />
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            邮政编码
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.zipCode}
+                            onChange={(e) => handleFormInputChange('zipCode', e.target.value)}
+                            placeholder="请输入邮政编码（选填）"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        标签
+                      </label>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {tagOptions.map((option, index) => {
+                          const color = getTagColor(index);
+                          const isSelected = formData.tag === option.value;
+                          return (
+                            <button
+                              key={option.value || 'none'}
+                              type="button"
+                              onClick={() => handleFormInputChange('tag', option.value)}
+                              className={`relative px-4 py-2 rounded-full border-2 transition-all ${
+                                isSelected
+                                  ? `${color.border} ${color.bg} ${color.text} ring-2 ring-offset-1 ${color.border.replace('border-', 'ring-')}`
+                                  : `${color.border} ${color.bg} ${color.text} hover:shadow-md`
+                              }`}
+                            >
+                              <span className="text-sm font-medium">{option.label}</span>
+                            </button>
+                          );
+                        })}
+                        
+                        {customTags.map((tag, index) => {
+                          const color = getTagColor(tagOptions.length + index);
+                          const isSelected = formData.tag === tag.id;
+                          const isHovered = hoveredTagId === tag.id;
+                          return (
+                            <div
+                              key={tag.id}
+                              className="relative"
+                              onMouseEnter={() => setHoveredTagId(tag.id)}
+                              onMouseLeave={() => setHoveredTagId(null)}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleFormInputChange('tag', tag.id)}
+                                className={`relative px-4 py-2 pr-8 rounded-full border-2 transition-all ${
+                                  isSelected
+                                    ? `${color.border} ${color.bg} ${color.text} ring-2 ring-offset-1 ${color.border.replace('border-', 'ring-')}`
+                                    : `${color.border} ${color.bg} ${color.text} hover:shadow-md`
+                                }`}
+                              >
+                                <span className="text-sm font-medium">{tag.name}</span>
+                              </button>
+                              {isHovered && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (formData.tag === tag.id) {
+                                      handleFormInputChange('tag', undefined);
+                                    }
+                                  }}
+                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
+                                  title="移除标签选择"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {isAddingTag ? (
+                          <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-full border-2 border-dashed border-gray-300">
+                            <input
+                              type="text"
+                              value={newTagName}
+                              onChange={(e) => setNewTagName(e.target.value)}
+                              placeholder="标签名称"
+                              className="w-24 px-2 py-1 bg-transparent border-none outline-none text-sm"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleAddNewTag();
+                                } else if (e.key === 'Escape') {
+                                  handleCancelAddTag();
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddNewTag}
+                              disabled={!newTagName.trim()}
+                              className="p-1 text-green-600 hover:bg-green-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelAddTag}
+                              className="p-1 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingTag(true)}
+                            className="px-4 py-2 rounded-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-rose-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span className="text-sm font-medium">添加标签</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddAddressForm(false);
+                          setFormData({ ...initialFormData });
+                          setCities([]);
+                          setDistricts([]);
+                        }}
+                        className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveNewAddress}
+                        disabled={!validateAddress()}
+                        className={`px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                          validateAddress()
+                            ? 'bg-rose-600 text-white hover:bg-rose-700'
+                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        保存地址
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
