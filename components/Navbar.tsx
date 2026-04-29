@@ -85,10 +85,9 @@ function NavDropdown({ categoryId, isOpen, isAnimating }: NavDropdownProps) {
                 <li key={sub.id}>
                   <Link
                     href={`/products?category=${categoryId}&style=${encodeURIComponent(sub.name)}`}
-                    className="flex items-center justify-between px-3 py-2 text-sm text-gray-600 hover:text-rose-600 hover:bg-white rounded-md transition-colors group"
+                    className="block px-3 py-2 text-sm text-gray-600 hover:text-rose-600 hover:bg-white rounded-md transition-colors"
                   >
                     <span>{sub.name}</span>
-                    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </li>
               ))}
