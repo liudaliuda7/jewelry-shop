@@ -13,10 +13,17 @@ import {
   Home, 
   Building, 
   Star,
-  ChevronDown
+  ChevronDown,
+  AlertTriangle,
+  Info,
+  Tag,
+  Edit3,
+  Check,
+  Hash
 } from 'lucide-react';
 import { useAddress } from '@/contexts/AddressContext';
-import { Address, AddressTag } from '@/types/data';
+import { useTag } from '@/contexts/TagContext';
+import { Address, AddressTag, CustomTag } from '@/types/data';
 import { getProvinces, getCities, getDistricts } from '@/types/data';
 
 interface AddressFormData {
@@ -49,14 +56,33 @@ const initialFormData: AddressFormData = {
   isDefault: false,
 };
 
-const tagOptions: { value: AddressTag | undefined; label: string; icon: React.ReactNode }[] = [
-  { value: undefined, label: '无标签', icon: <MapPin className="w-4 h-4" /> },
-  { value: 'home', label: '家', icon: <Home className="w-4 h-4" /> },
-  { value: 'work', label: '公司', icon: <Building className="w-4 h-4" /> },
+interface TagColor {
+  border: string;
+  bg: string;
+  text: string;
+}
+
+const tagColorSchemes: TagColor[] = [
+  { border: 'border-rose-400', bg: 'bg-rose-50', text: 'text-rose-600' },
+  { border: 'border-blue-400', bg: 'bg-blue-50', text: 'text-blue-600' },
+  { border: 'border-green-400', bg: 'bg-green-50', text: 'text-green-600' },
+  { border: 'border-purple-400', bg: 'bg-purple-50', text: 'text-purple-600' },
+  { border: 'border-orange-400', bg: 'bg-orange-50', text: 'text-orange-600' },
+  { border: 'border-teal-400', bg: 'bg-teal-50', text: 'text-teal-600' },
+];
+
+const getTagColor = (index: number): TagColor => {
+  return tagColorSchemes[index % tagColorSchemes.length];
+};
+
+const tagOptions: { value: AddressTag | undefined; label: string }[] = [
+  { value: 'home', label: '家' },
+  { value: 'work', label: '公司' },
 ];
 
 export default function AddressesPage() {
   const { addresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } = useAddress();
+  const { customTags, addTag, deleteTag } = useTag();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
@@ -64,6 +90,14 @@ export default function AddressesPage() {
   const [provinces, setProvinces] = useState<{ code: string; name: string }[]>([]);
   const [cities, setCities] = useState<{ code: string; name: string }[]>([]);
   const [districts, setDistricts] = useState<{ code: string; name: string }[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState<'error' | 'info'>('error');
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [hoveredTagId, setHoveredTagId] = useState<string | null>(null);
 
   useEffect(() => {
     setProvinces(getProvinces());
@@ -137,6 +171,9 @@ export default function AddressesPage() {
     setShowModal(false);
     setEditingAddress(null);
     setFormData(initialFormData);
+    setIsAddingTag(false);
+    setNewTagName('');
+    setHoveredTagId(null);
   };
 
   const handleInputChange = (field: keyof AddressFormData, value: string | boolean | AddressTag | undefined) => {
@@ -145,7 +182,9 @@ export default function AddressesPage() {
 
   const handleSubmit = () => {
     if (!formData.name || !formData.phone || !formData.provinceCode || !formData.cityCode || !formData.districtCode || !formData.address) {
-      alert('请填写完整的地址信息');
+      setAlertMessage('请填写完整的地址信息');
+      setAlertType('error');
+      setShowAlert(true);
       return;
     }
 
@@ -163,15 +202,74 @@ export default function AddressesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('确定要删除这个地址吗？')) {
-      deleteAddress(id);
+    setDeletingAddressId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingAddressId) {
+      deleteAddress(deletingAddressId);
     }
+    setShowDeleteConfirm(false);
+    setDeletingAddressId(null);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setDeletingAddressId(null);
   };
 
   const getTagInfo = (tag?: AddressTag) => {
     if (!tag) return null;
     const found = tagOptions.find(t => t.value === tag);
-    return found || null;
+    if (found) return { ...found, isPreset: true };
+    const customTag = customTags.find(t => t.id === tag || t.name === tag);
+    if (customTag) {
+      return { value: customTag.id, label: customTag.name, isPreset: false, tagData: customTag };
+    }
+    return null;
+  };
+
+  const handleAddTag = () => {
+    if (newTagName.trim()) {
+      const isDuplicate = [
+        ...tagOptions.map(t => t.label.toLowerCase()),
+        ...customTags.map(t => t.name.toLowerCase())
+      ].includes(newTagName.trim().toLowerCase());
+      
+      if (!isDuplicate) {
+        addTag(newTagName.trim());
+      }
+      setNewTagName('');
+      setIsAddingTag(false);
+    }
+  };
+
+  const handleCancelAddTag = () => {
+    setNewTagName('');
+    setIsAddingTag(false);
+  };
+
+  const handleDeleteCustomTag = (id: string) => {
+    const tag = customTags.find(t => t.id === id);
+    if (tag) {
+      const updatedAddresses = addresses.map(addr => {
+        if (addr.tag === id || addr.tag === tag.name) {
+          return { ...addr, tag: undefined };
+        }
+        return addr;
+      });
+      updatedAddresses.forEach(addr => {
+        if (addresses.find(a => a.id === addr.id)?.tag !== addr.tag) {
+          updateAddress(addr.id, { tag: addr.tag });
+        }
+      });
+    }
+    if (formData.tag === id) {
+      setFormData(prev => ({ ...prev, tag: undefined }));
+    }
+    deleteTag(id);
+    setHoveredTagId(null);
   };
 
   return (
@@ -427,28 +525,121 @@ export default function AddressesPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    标签
-                  </label>
-                  <div className="flex gap-2">
-                    {tagOptions.map(option => (
+                <div></div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  标签
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {tagOptions.map((option, index) => {
+                    const color = getTagColor(index);
+                    const isSelected = formData.tag === option.value;
+                    return (
                       <button
                         key={option.value || 'none'}
                         type="button"
                         onClick={() => handleInputChange('tag', option.value)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all ${
-                          formData.tag === option.value
-                            ? 'border-rose-500 bg-rose-50 text-rose-600'
-                            : 'border-gray-200 text-gray-600 hover:border-rose-200'
+                        className={`relative group px-4 py-2 rounded-full border-2 transition-all ${
+                          isSelected
+                            ? `${color.border} ${color.bg} ${color.text} ring-2 ring-offset-1 ${color.border.replace('border-', 'ring-')}`
+                            : `${color.border} ${color.bg} ${color.text} hover:shadow-md`
                         }`}
                       >
-                        {option.icon}
-                        <span>{option.label}</span>
+                        <span className="text-sm font-medium">{option.label}</span>
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
+                  
+                  {customTags.map((tag, index) => {
+                    const color = getTagColor(tagOptions.length + index);
+                    const isSelected = formData.tag === tag.id;
+                    const isHovered = hoveredTagId === tag.id;
+                    return (
+                      <div
+                        key={tag.id}
+                        className="relative"
+                        onMouseEnter={() => setHoveredTagId(tag.id)}
+                        onMouseLeave={() => setHoveredTagId(null)}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleInputChange('tag', tag.id)}
+                          className={`relative px-4 py-2 pr-8 rounded-full border-2 transition-all ${
+                            isSelected
+                              ? `${color.border} ${color.bg} ${color.text} ring-2 ring-offset-1 ${color.border.replace('border-', 'ring-')}`
+                              : `${color.border} ${color.bg} ${color.text} hover:shadow-md`
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{tag.name}</span>
+                        </button>
+                        {isHovered && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCustomTag(tag.id);
+                            }}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-md"
+                            title="删除标签"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  
+                  {isAddingTag ? (
+                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-full border-2 border-dashed border-gray-300">
+                      <input
+                        type="text"
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        placeholder="标签名称"
+                        className="w-24 px-2 py-1 bg-transparent border-none outline-none text-sm"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleAddTag();
+                          } else if (e.key === 'Escape') {
+                            handleCancelAddTag();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddTag}
+                        disabled={!newTagName.trim()}
+                        className="p-1 text-green-600 hover:bg-green-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="保存"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelAddTag}
+                        className="p-1 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                        title="取消"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingTag(true)}
+                      className="px-4 py-2 rounded-full border-2 border-dashed border-gray-300 text-gray-500 hover:border-rose-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span className="text-sm font-medium">添加标签</span>
+                    </button>
+                  )}
                 </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  鼠标悬停在自定义标签上可删除标签，删除后使用该标签的地址将变为无标签
+                </p>
               </div>
 
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
@@ -485,6 +676,73 @@ export default function AddressesPage() {
                 className="px-8 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors font-medium"
               >
                 {editingAddress ? '保存修改' : '保存地址'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={cancelDelete}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-red-100">
+                <AlertTriangle className="w-8 h-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 text-center mb-2">
+                确认删除
+              </h3>
+              <p className="text-gray-500 text-center mb-6">
+                确定要删除这个地址吗？此操作无法撤销。
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelDelete}
+                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  确认删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowAlert(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className={`flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full ${
+                alertType === 'error' ? 'bg-amber-100' : 'bg-blue-100'
+              }`}>
+                {alertType === 'error' ? (
+                  <AlertTriangle className={`w-8 h-8 ${alertType === 'error' ? 'text-amber-600' : 'text-blue-600'}`} />
+                ) : (
+                  <Info className="w-8 h-8 text-blue-600" />
+                )}
+              </div>
+              <p className="text-gray-700 text-center mb-6">
+                {alertMessage}
+              </p>
+              <button
+                onClick={() => setShowAlert(false)}
+                className="w-full px-6 py-3 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors font-medium"
+              >
+                知道了
               </button>
             </div>
           </div>

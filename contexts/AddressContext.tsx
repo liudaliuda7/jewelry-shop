@@ -86,10 +86,6 @@ export function AddressProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  const saveAddresses = (newAddresses: Address[]) => {
-    setAddresses(newAddresses);
-  };
-
   const addAddress = (addressData: Omit<Address, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     const existingDuplicate = addresses.find(addr => isAddressDuplicate(addr, addressData));
     
@@ -120,7 +116,6 @@ export function AddressProvider({ children }: { children: ReactNode }) {
         }));
       }
       
-      saveAddresses(updatedAddresses);
       return updatedAddresses;
     });
   };
@@ -142,7 +137,6 @@ export function AddressProvider({ children }: { children: ReactNode }) {
         }));
       }
       
-      saveAddresses(updatedAddresses);
       return updatedAddresses;
     });
   };
@@ -153,10 +147,11 @@ export function AddressProvider({ children }: { children: ReactNode }) {
       let updatedAddresses = prev.filter(addr => addr.id !== id);
       
       if (addressToDelete?.isDefault && updatedAddresses.length > 0) {
-        updatedAddresses[0].isDefault = true;
+        updatedAddresses = updatedAddresses.map((addr, index) => 
+          index === 0 ? { ...addr, isDefault: true } : addr
+        );
       }
       
-      saveAddresses(updatedAddresses);
       return updatedAddresses;
     });
   };
@@ -167,7 +162,6 @@ export function AddressProvider({ children }: { children: ReactNode }) {
         ...addr,
         isDefault: addr.id === id,
       }));
-      saveAddresses(updatedAddresses);
       return updatedAddresses;
     });
   };
