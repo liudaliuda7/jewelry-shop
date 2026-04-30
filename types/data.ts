@@ -1196,3 +1196,146 @@ export function getDistricts(provinceCode: string, cityCode: string): { code: st
   const city = province?.children?.find(c => c.code === cityCode);
   return city?.children?.map(d => ({ code: d.code, name: d.name })) || [];
 }
+
+// ==================== 会员系统类型定义 ====================
+
+export type MemberLevel = 'regular' | 'silver' | 'gold' | 'diamond';
+
+export interface MemberLevelConfig {
+  level: MemberLevel;
+  name: string;
+  icon: string;
+  minPoints: number;
+  minSpent: number;
+  discount: number;
+  color: string;
+  bgColor: string;
+  privileges: string[];
+}
+
+export const memberLevelConfigs: MemberLevelConfig[] = [
+  {
+    level: 'regular',
+    name: '普通会员',
+    icon: '💫',
+    minPoints: 0,
+    minSpent: 0,
+    discount: 1,
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-100',
+    privileges: ['注册即享', '生日特权', '积分累计']
+  },
+  {
+    level: 'silver',
+    name: '银卡会员',
+    icon: '⭐',
+    minPoints: 1000,
+    minSpent: 500,
+    discount: 0.95,
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-100',
+    privileges: ['9.5折优惠', '优先客服', '双倍积分日', '专属优惠券']
+  },
+  {
+    level: 'gold',
+    name: '金卡会员',
+    icon: '🌟',
+    minPoints: 5000,
+    minSpent: 2000,
+    discount: 0.9,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-100',
+    privileges: ['9折优惠', '免运费', '三倍积分日', '生日礼包', '新品优先购']
+  },
+  {
+    level: 'diamond',
+    name: '钻石会员',
+    icon: '💎',
+    minPoints: 20000,
+    minSpent: 10000,
+    discount: 0.85,
+    color: 'text-cyan-600',
+    bgColor: 'bg-cyan-100',
+    privileges: ['8.5折优惠', '专属顾问', '四倍积分日', '限量款优先', 'VIP活动邀请', '免费保养服务']
+  }
+];
+
+export function getMemberLevelConfig(level: MemberLevel): MemberLevelConfig {
+  return memberLevelConfigs.find(config => config.level === level) || memberLevelConfigs[0];
+}
+
+export function getMemberLevelByPoints(totalPoints: number, totalSpent: number): MemberLevel {
+  const sortedConfigs = [...memberLevelConfigs].reverse();
+  
+  for (const config of sortedConfigs) {
+    if (totalPoints >= config.minPoints && totalSpent >= config.minSpent) {
+      return config.level;
+    }
+  }
+  
+  return 'regular';
+}
+
+export type PointsTransactionType = 'earn' | 'spend' | 'expire' | 'bonus';
+export type PointsSource = 'purchase' | 'signup' | 'birthday' | 'review' | 'activity' | 'exchange' | 'expire';
+
+export interface PointsTransaction {
+  id: string;
+  userId: string;
+  amount: number;
+  type: PointsTransactionType;
+  source: PointsSource;
+  description: string;
+  balance: number;
+  createdAt: string;
+  expiresAt?: string;
+  relatedOrderId?: string;
+  relatedProductId?: string;
+}
+
+export interface MemberInfo {
+  userId: string;
+  currentPoints: number;
+  totalPoints: number;
+  totalSpent: number;
+  memberLevel: MemberLevel;
+  joinDate: string;
+  lastUpgradeDate?: string;
+  birthday?: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface PointsExpiration {
+  id: string;
+  userId: string;
+  amount: number;
+  earnedAt: string;
+  expiresAt: string;
+  remainingAmount: number;
+  isExpired: boolean;
+}
+
+export const INITIAL_SIGNUP_POINTS = 100;
+export const POINTS_EXPIRATION_MONTHS = 12;
+export const POINTS_PER_YUAN = 1;
+
+export function calculatePointsExpirationDate(earnedAt: string): string {
+  const date = new Date(earnedAt);
+  date.setMonth(date.getMonth() + POINTS_EXPIRATION_MONTHS);
+  return date.toISOString();
+}
+
+export function calculatePurchasePoints(amount: number, level: MemberLevel): number {
+  const config = getMemberLevelConfig(level);
+  const basePoints = Math.floor(amount * POINTS_PER_YUAN);
+  
+  const levelMultiplier: Record<MemberLevel, number> = {
+    regular: 1,
+    silver: 1.5,
+    gold: 2,
+    diamond: 2.5
+  };
+  
+  return Math.floor(basePoints * levelMultiplier[level]);
+}
