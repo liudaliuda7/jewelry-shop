@@ -15,9 +15,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  turbopack: {
-    root: '/Users/tan/web/jewelry-shop',
-  },
 };
 
 export default nextConfig;

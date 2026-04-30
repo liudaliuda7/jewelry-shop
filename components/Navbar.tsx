@@ -7,7 +7,6 @@ import {
   Menu, 
   X, 
   LogIn, 
-  User, 
   Settings, 
   LogOut, 
   ChevronDown,
@@ -198,12 +197,6 @@ export default function Navbar() {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
       }
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsSearchOpen(false);
-        setSearchQuery('');
-        setSearchResults([]);
-        setSearchSuggestions([]);
-      }
     }
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -345,136 +338,12 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="relative" ref={searchRef}>
-              <button
-                onClick={handleSearchToggle}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <Search className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
-              </button>
-
-              {isSearchOpen && (
-                <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-100 z-50 animate-dropdown-in">
-                  <div className="p-3">
-                    <div className="flex items-center gap-2">
-                      <Search className="w-5 h-5 text-gray-400" />
-                      <input
-                        ref={searchInputRef}
-                        type="text"
-                        placeholder="搜索商品、风格、材质..."
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSearchSubmit();
-                          }
-                        }}
-                        className="flex-1 outline-none text-gray-700 placeholder-gray-400"
-                      />
-                      {searchQuery && (
-                        <button
-                          onClick={() => handleSearch('')}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {searchQuery && (
-                    <>
-                      {searchSuggestions.length > 0 && (
-                        <div className="px-3 py-2 border-t border-gray-100">
-                          <p className="text-xs text-gray-500 mb-2">搜索建议</p>
-                          <div className="flex flex-wrap gap-2">
-                            {searchSuggestions.map((suggestion, index) => (
-                              <button
-                                key={index}
-                                onClick={() => handleSuggestionClick(suggestion)}
-                                className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                              >
-                                {suggestion}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {searchResults.length > 0 && (
-                        <div className="px-3 py-2 border-t border-gray-100 max-h-80 overflow-y-auto">
-                          <p className="text-xs text-gray-500 mb-2">搜索结果</p>
-                          <div className="space-y-2">
-                            {searchResults.map((product) => (
-                              <Link
-                                key={product.id}
-                                href={`/products/${product.id}`}
-                                onClick={() => {
-                                  setIsSearchOpen(false);
-                                  setSearchQuery('');
-                                  setSearchResults([]);
-                                  setSearchSuggestions([]);
-                                }}
-                                className="flex gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
-                              >
-                                <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink-0">
-                                  <Image
-                                    src={product.images[0]}
-                                    alt={product.name}
-                                    fill
-                                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                  />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-sm text-gray-800 font-medium truncate group-hover:text-rose-600 transition-colors">
-                                    {product.name}
-                                  </h4>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {product.style} · {product.material}
-                                  </p>
-                                  <p className="text-sm font-semibold text-rose-600 mt-1">
-                                    ¥{product.price.toLocaleString()}
-                                  </p>
-                                </div>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {searchResults.length === 0 && searchQuery && (
-                        <div className="px-3 py-4 border-t border-gray-100 text-center">
-                          <p className="text-sm text-gray-500">未找到相关商品</p>
-                          <button
-                            onClick={handleSearchSubmit}
-                            className="mt-2 text-sm text-rose-600 hover:text-rose-700"
-                          >
-                            查看全部商品 →
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {!searchQuery && (
-                    <div className="px-3 py-4 border-t border-gray-100">
-                      <p className="text-xs text-gray-500 mb-3">热门搜索</p>
-                      <div className="flex flex-wrap gap-2">
-                        {['项链', '戒指', '耳环', '手链', '经典', '时尚', '优雅'].map((keyword, index) => (
-                          <button
-                            key={index}
-                            onClick={() => handleSuggestionClick(keyword)}
-                            className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                          >
-                            {keyword}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <button
+              onClick={handleSearchToggle}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Search className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
+            </button>
 
             <Link href="/cart" className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
@@ -643,6 +512,153 @@ export default function Navbar() {
               </div>
             )}
           </div>
+        )}
+
+        {isSearchOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/30 z-40 animate-overlay-in"
+              onClick={handleSearchToggle}
+            />
+            <div 
+              className="fixed left-0 right-0 top-0 bg-white shadow-xl z-50 animate-drawer-down"
+              ref={searchRef}
+            >
+              <div className="max-w-7xl mx-auto px-4">
+                <div className="py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-800">搜索商品</h3>
+                    <button
+                      onClick={handleSearchToggle}
+                      className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Search className="w-5 h-5 text-gray-400" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="搜索商品、风格、材质..."
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearchSubmit();
+                        } else if (e.key === 'Escape') {
+                          handleSearchToggle();
+                        }
+                      }}
+                      className="flex-1 outline-none text-gray-700 placeholder-gray-400 bg-transparent"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => handleSearch('')}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {searchQuery ? (
+                  <div className="py-4 max-h-[60vh] overflow-y-auto">
+                    {searchSuggestions.length > 0 && (
+                      <div className="mb-6">
+                        <p className="text-xs text-gray-500 mb-3 font-medium">搜索建议</p>
+                        <div className="flex flex-wrap gap-2">
+                          {searchSuggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              onClick={() => handleSuggestionClick(suggestion)}
+                              className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {searchResults.length > 0 ? (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-3 font-medium">搜索结果 ({searchResults.length})</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {searchResults.map((product) => (
+                            <Link
+                              key={product.id}
+                              href={`/products/${product.id}`}
+                              onClick={() => {
+                                setIsSearchOpen(false);
+                                setSearchQuery('');
+                                setSearchResults([]);
+                                setSearchSuggestions([]);
+                              }}
+                              className="flex gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors group border border-gray-100"
+                            >
+                              <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                                <Image
+                                  src={product.images[0]}
+                                  alt={product.name}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm text-gray-800 font-medium truncate group-hover:text-rose-600 transition-colors">
+                                  {product.name}
+                                </h4>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {product.style} · {product.material}
+                                </p>
+                                <p className="text-sm font-semibold text-rose-600 mt-2">
+                                  ¥{product.price.toLocaleString()}
+                                </p>
+                                {product.originalPrice && (
+                                  <p className="text-xs text-gray-400 line-through">
+                                    ¥{product.originalPrice.toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-sm text-gray-500 mb-4">未找到相关商品</p>
+                        <button
+                          onClick={handleSearchSubmit}
+                          className="text-sm text-rose-600 hover:text-rose-700 font-medium"
+                        >
+                          查看全部商品 →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="py-6">
+                    <p className="text-xs text-gray-500 mb-4 font-medium">热门搜索</p>
+                    <div className="flex flex-wrap gap-2">
+                      {['项链', '戒指', '耳环', '手链', '经典', '时尚', '优雅', '简约', '复古'].map((keyword, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSuggestionClick(keyword)}
+                          className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                        >
+                          {keyword}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </nav>
