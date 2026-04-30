@@ -12,7 +12,8 @@ import {
   LogOut, 
   ChevronDown,
   ShoppingBag,
-  ChevronRight
+  ChevronRight,
+  Search
 } from 'lucide-react';
 import Image from 'next/image';
 import { categories, products, Product, Category } from '@/types/data';
@@ -114,7 +115,7 @@ function NavDropdown({ categoryId, isOpen, isAnimating }: NavDropdownProps) {
                   href={`/products/${product.id}`}
                   className="group flex gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <div className="relative w-16 h-16 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-md overflow-hidden bg-gray-100 shrink-0">
                     <Image
                       src={product.images[0]}
                       alt={product.name}
@@ -163,6 +164,13 @@ export default function Navbar() {
   const [isDropdownAnimating, setIsDropdownAnimating] = useState(false);
   const dropdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (isFirstMount.current) {
       isFirstMount.current = false;
@@ -189,6 +197,12 @@ export default function Navbar() {
     function handleClickOutside(event: MouseEvent) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+        setSearchQuery('');
+        setSearchResults([]);
+        setSearchSuggestions([]);
       }
     }
 
@@ -220,6 +234,67 @@ export default function Navbar() {
   };
 
   const shouldAnimate = animationKey > 0 && cartCount > 0;
+
+  const handleSearchToggle = () => {
+    setIsSearchOpen(!isSearchOpen);
+    if (!isSearchOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    } else {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchSuggestions([]);
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    
+    if (!query.trim()) {
+      setSearchResults([]);
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    
+    const results = products.filter(
+      (product) =>
+        product.name.toLowerCase().includes(lowerQuery) ||
+        product.style.toLowerCase().includes(lowerQuery) ||
+        product.material.toLowerCase().includes(lowerQuery) ||
+        product.category.toLowerCase().includes(lowerQuery)
+    );
+    setSearchResults(results.slice(0, 6));
+
+    const suggestions = [
+      ...new Set([
+        ...products
+          .filter((p) => p.name.toLowerCase().includes(lowerQuery))
+          .map((p) => p.name),
+        ...products
+          .filter((p) => p.style.toLowerCase().includes(lowerQuery))
+          .map((p) => p.style),
+      ]),
+    ].slice(0, 4);
+    setSearchSuggestions(suggestions);
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      window.location.href = `/products?search=${encodeURIComponent(searchQuery)}`;
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchSuggestions([]);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchQuery(suggestion);
+    handleSearch(suggestion);
+  };
 
   const handleLogout = () => {
     logout();
@@ -270,6 +345,137 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <div className="relative" ref={searchRef}>
+              <button
+                onClick={handleSearchToggle}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Search className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
+              </button>
+
+              {isSearchOpen && (
+                <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-100 z-50 animate-dropdown-in">
+                  <div className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-5 h-5 text-gray-400" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="搜索商品、风格、材质..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSearchSubmit();
+                          }
+                        }}
+                        className="flex-1 outline-none text-gray-700 placeholder-gray-400"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => handleSearch('')}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {searchQuery && (
+                    <>
+                      {searchSuggestions.length > 0 && (
+                        <div className="px-3 py-2 border-t border-gray-100">
+                          <p className="text-xs text-gray-500 mb-2">搜索建议</p>
+                          <div className="flex flex-wrap gap-2">
+                            {searchSuggestions.map((suggestion, index) => (
+                              <button
+                                key={index}
+                                onClick={() => handleSuggestionClick(suggestion)}
+                                className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {searchResults.length > 0 && (
+                        <div className="px-3 py-2 border-t border-gray-100 max-h-80 overflow-y-auto">
+                          <p className="text-xs text-gray-500 mb-2">搜索结果</p>
+                          <div className="space-y-2">
+                            {searchResults.map((product) => (
+                              <Link
+                                key={product.id}
+                                href={`/products/${product.id}`}
+                                onClick={() => {
+                                  setIsSearchOpen(false);
+                                  setSearchQuery('');
+                                  setSearchResults([]);
+                                  setSearchSuggestions([]);
+                                }}
+                                className="flex gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors group"
+                              >
+                                <div className="relative w-12 h-12 rounded-md overflow-hidden bg-gray-100 shrink-0">
+                                  <Image
+                                    src={product.images[0]}
+                                    alt={product.name}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm text-gray-800 font-medium truncate group-hover:text-rose-600 transition-colors">
+                                    {product.name}
+                                  </h4>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {product.style} · {product.material}
+                                  </p>
+                                  <p className="text-sm font-semibold text-rose-600 mt-1">
+                                    ¥{product.price.toLocaleString()}
+                                  </p>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {searchResults.length === 0 && searchQuery && (
+                        <div className="px-3 py-4 border-t border-gray-100 text-center">
+                          <p className="text-sm text-gray-500">未找到相关商品</p>
+                          <button
+                            onClick={handleSearchSubmit}
+                            className="mt-2 text-sm text-rose-600 hover:text-rose-700"
+                          >
+                            查看全部商品 →
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {!searchQuery && (
+                    <div className="px-3 py-4 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 mb-3">热门搜索</p>
+                      <div className="flex flex-wrap gap-2">
+                        {['项链', '戒指', '耳环', '手链', '经典', '时尚', '优雅'].map((keyword, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleSuggestionClick(keyword)}
+                            className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                          >
+                            {keyword}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <Link href="/cart" className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-rose-600 transition-colors" />
               {cartCount > 0 && (
