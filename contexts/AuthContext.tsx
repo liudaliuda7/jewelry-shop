@@ -76,26 +76,10 @@ function getCurrentTimestamp(): string {
   return new Date().toISOString();
 }
 
-function migrateUserData(user: any): User {
-  const now = getCurrentTimestamp();
-  
-  return {
-    ...user,
-    memberLevel: user.memberLevel || 'regular',
-    currentPoints: user.currentPoints || 0,
-    totalPoints: user.totalPoints || 0,
-    totalSpent: user.totalSpent || 0,
-    joinDate: user.joinDate || now,
-  };
-}
-
 function getUsersFromStorage(): AuthUser[] {
   if (typeof window === 'undefined') return [];
   const saved = localStorage.getItem(STORAGE_KEY_USERS);
-  if (!saved) return [];
-  
-  const users = JSON.parse(saved);
-  return users.map((user: any) => migrateUserData(user) as AuthUser);
+  return saved ? JSON.parse(saved) : [];
 }
 
 function saveUsersToStorage(users: AuthUser[]): void {
@@ -106,10 +90,7 @@ function saveUsersToStorage(users: AuthUser[]): void {
 function getCurrentUserFromStorage(): User | null {
   if (typeof window === 'undefined') return null;
   const saved = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
-  if (!saved) return null;
-  
-  const parsedUser = JSON.parse(saved);
-  return migrateUserData(parsedUser);
+  return saved ? JSON.parse(saved) : null;
 }
 
 function saveCurrentUserToStorage(user: User | null): void {
