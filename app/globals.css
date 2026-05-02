@@ -110,3 +110,34 @@ body {
 .animate-pulse {
   animation: shimmer 1.5s infinite linear;
 }
+
+/* 下拉菜单动画 */
+@keyframes dropdown-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdown-fade-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-dropdown-in {
+  animation: dropdown-fade-in 0.2s ease-out forwards;
+}
+
+.animate-dropdown-out {
+  animation: dropdown-fade-out 0.15s ease-in forwards;
+}
