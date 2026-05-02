@@ -1316,7 +1316,7 @@ export interface PointsExpiration {
   isExpired: boolean;
 }
 
-export const INITIAL_SIGNUP_POINTS = 100;
+export const INITIAL_SIGNUP_POINTS = 20;
 export const POINTS_EXPIRATION_MONTHS = 12;
 export const POINTS_PER_YUAN = 1;
 
