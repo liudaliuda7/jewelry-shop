@@ -5,7 +5,7 @@ import { Address, AddressTag } from '@/types/data';
 
 interface AddressContextType {
   addresses: Address[];
-  addAddress: (address: Omit<Address, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+  addAddress: (address: Omit<Address, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => Address[];
   updateAddress: (id: string, updates: Partial<Address>) => void;
   deleteAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
@@ -94,7 +94,7 @@ export function AddressProvider({ children }: { children: ReactNode }) {
       if (addressData.isDefault && !existingDuplicate.isDefault) {
         setDefaultAddress(existingDuplicate.id);
       }
-      return;
+      return addresses;
     }
 
     const now = new Date().toISOString();
@@ -106,18 +106,19 @@ export function AddressProvider({ children }: { children: ReactNode }) {
       updatedAt: now,
     };
 
-    setAddresses(prev => {
-      let updatedAddresses = [...prev, newAddress];
-      
-      if (newAddress.isDefault || prev.length === 0) {
-        updatedAddresses = updatedAddresses.map(addr => ({
-          ...addr,
-          isDefault: addr.id === newAddress.id,
-        }));
-      }
-      
-      return updatedAddresses;
-    });
+    let updatedAddresses: Address[];
+    
+    if (newAddress.isDefault || addresses.length === 0) {
+      updatedAddresses = [...addresses, newAddress].map(addr => ({
+        ...addr,
+        isDefault: addr.id === newAddress.id,
+      }));
+    } else {
+      updatedAddresses = [...addresses, newAddress];
+    }
+
+    setAddresses(updatedAddresses);
+    return updatedAddresses;
   };
 
   const updateAddress = (id: string, updates: Partial<Address>) => {
