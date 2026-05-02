@@ -79,7 +79,13 @@ export interface Category {
   image: string;
 }
 
-export type AddressTag = 'home' | 'work' | 'default';
+export type AddressTag = 'home' | 'work' | 'custom' | string;
+
+export interface CustomTag {
+  id: string;
+  name: string;
+  createdAt: string;
+}
 
 export interface Address {
   id: string;
