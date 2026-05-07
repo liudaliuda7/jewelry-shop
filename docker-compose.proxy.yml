@@ -1,0 +1,23 @@
+services:
+  jewelry-shop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - HTTP_PROXY=127.0.0.1:9090
+        - HTTPS_PROXY=127.0.0.1:9090
+        - http_proxy=127.0.0.1:9090
+        - https_proxy=127.0.0.1:9090
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - HTTP_PROXY=127.0.0.1:9090
+      - HTTPS_PROXY=127.0.0.1:9090
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
