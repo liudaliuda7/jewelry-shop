@@ -2,6 +2,12 @@
 
 基于 Next.js + React + TypeScript 的珠宝电商网站仓库，包含商品展示、购物车、订单管理、地址管理等模块。
 
+## 环境约束
+
+- 提供给模型的仓库压缩包根目录名固定为 `repo`
+- 容器内仓库路径固定为 `/app/repo`
+- 下面部分题目会直接引用仓库中的真实文件片段，分析和修改时应以这些片段及对应文件为准
+
 ---
 
 ## 任务 1：代码理解与分析
@@ -15,6 +21,25 @@
 
 ### 相关代码
 `components/ProductCard.tsx`
+
+### 仓库引用
+```tsx
+const discount = product.originalPrice
+  ? Math.round((1 - product.price / product.originalPrice) * 100)
+  : 0;
+
+{discount > 0 && (
+  <div className="absolute top-2 left-2 bg-rose-600 text-white text-xs px-2 py-1 rounded">
+    -{discount}%
+  </div>
+)}
+
+{product.isHot && (
+  <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs px-2 py-1 rounded">
+    热卖
+  </div>
+)}
+```
 
 ### 预期输出
 - 折扣计算公式的解释
@@ -34,6 +59,36 @@
 
 ### 相关代码
 `contexts/CartContext.tsx`
+
+### 仓库引用
+```tsx
+const addToCart = (product: Product, sku: SKU, quantity: number) => {
+  setCart(prevCart => {
+    const existingItemIndex = prevCart.findIndex(
+      item => item.product.id === product.id && item.sku.id === sku.id
+    );
+
+    if (existingItemIndex !== -1) {
+      return prevCart.map((item, index) => {
+        if (index === existingItemIndex) {
+          return {
+            ...item,
+            quantity: item.quantity + quantity
+          };
+        }
+        return item;
+      });
+    } else {
+      return [...prevCart, {
+        id: `${product.id}-${sku.id}-${Date.now()}`,
+        product,
+        sku,
+        quantity
+      }];
+    }
+  });
+};
+```
 
 ### 预期输出
 - 问题根因分析
@@ -92,6 +147,22 @@
 ### 相关代码
 `contexts/AddressContext.tsx`
 
+### 仓库引用
+```tsx
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const isAddressExpired = (address: Address): boolean => {
+  const createdAt = new Date(address.createdAt).getTime();
+  const now = Date.now();
+  return now - createdAt > SEVEN_DAYS_MS;
+};
+
+useEffect(() => {
+  const interval = setInterval(clearExpiredAddresses, 60 * 60 * 1000);
+  return () => clearInterval(interval);
+}, []);
+```
+
 ### 预期输出
 - 过期检测算法的解释
 - 定时清理策略分析
@@ -110,6 +181,16 @@
 
 ### 相关代码
 `components/Carousel.tsx`
+
+### 仓库引用
+```tsx
+useEffect(() => {
+  const timer = setInterval(() => {
+    setCurrentIndex((prev) => (prev + 1) % banners.length);
+  }, 5000);
+  return () => clearInterval(timer);
+}, [banners.length]);
+```
 
 ### 预期输出
 - 修改后的组件代码
@@ -149,6 +230,27 @@
 ### 相关代码
 `app/checkout/page.tsx`
 
+### 仓库引用
+```tsx
+useEffect(() => {
+  const defaultAddr = getDefaultAddress();
+  if (defaultAddr) {
+    setSelectedSavedAddress(defaultAddr);
+    fillAddressFromSaved(defaultAddr);
+    setShowManualInput(false);
+  } else if (addresses.length === 0 && !isInitialized) {
+    setShowManualInput(true);
+  }
+  setIsInitialized(true);
+}, [addresses]);
+
+const handleSelectAddress = (savedAddress: Address) => {
+  setSelectedSavedAddress(savedAddress);
+  fillAddressFromSaved(savedAddress);
+  setShowAddressSelector(false);
+};
+```
+
 ### 预期输出
 - Bug 复现步骤
 - 根因分析
@@ -186,6 +288,40 @@
 
 ### 相关代码
 `types/data.ts`
+
+### 仓库引用
+```ts
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  description: string;
+  category: 'necklace' | 'ring' | 'earring' | 'bracelet';
+  style: string;
+  material: string;
+  images: string[];
+  skus: SKU[];
+  isHot?: boolean;
+  rating: number;
+  sales: number;
+}
+
+export interface Order {
+  id: string;
+  orderNo: string;
+  userId: string;
+  items: OrderItem[];
+  totalAmount: number;
+  status: OrderStatus;
+  paymentMethod: PaymentMethod;
+  address: OrderAddress;
+  createdAt: string;
+  paidAt?: string;
+  shippedAt?: string;
+  deliveredAt?: string;
+}
+```
 
 ### 预期输出
 - 拆分后的类型文件
@@ -243,6 +379,23 @@
 
 ### 相关代码
 `app/page.tsx`, `components/skeletons/HomeSkeleton.tsx`
+
+### 仓库引用
+```tsx
+const [isLoading, setIsLoading] = useState(true);
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setIsLoading(false);
+  }, 800);
+
+  return () => clearTimeout(timer);
+}, []);
+
+if (isLoading) {
+  return <HomeSkeleton />;
+}
+```
 
 ### 预期输出
 - 当前加载策略分析
