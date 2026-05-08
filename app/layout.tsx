@@ -6,9 +6,6 @@ import Footer from "@/components/Footer";
 import { CartProvider } from "@/contexts/CartContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { OrderProvider } from "@/contexts/OrderContext";
-import { AddressProvider } from "@/contexts/AddressContext";
-import { TagProvider } from "@/contexts/TagContext";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -38,19 +35,13 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <AuthProvider>
           <CartProvider>
-            <OrderProvider>
-              <AddressProvider>
-                <TagProvider>
-                  <ToastProvider>
-                    <Navbar />
-                    <main className="flex-grow">
-                      {children}
-                    </main>
-                    <Footer />
-                  </ToastProvider>
-                </TagProvider>
-              </AddressProvider>
-            </OrderProvider>
+            <ToastProvider>
+              <Navbar />
+              <main className="flex-grow">
+                {children}
+              </main>
+              <Footer />
+            </ToastProvider>
           </CartProvider>
         </AuthProvider>
       </body>

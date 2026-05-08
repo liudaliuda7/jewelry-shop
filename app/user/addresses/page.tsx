@@ -75,9 +75,9 @@ const getTagColor = (index: number): TagColor => {
   return tagColorSchemes[index % tagColorSchemes.length];
 };
 
-const tagOptions: { value: AddressTag | undefined; label: string }[] = [
-  { value: 'home', label: '家' },
-  { value: 'work', label: '公司' },
+const tagOptions: { value: AddressTag | undefined; label: string; icon: React.ReactNode }[] = [
+  { value: 'home', label: '家', icon: <Home className="w-3.5 h-3.5" /> },
+  { value: 'work', label: '公司', icon: <Building className="w-3.5 h-3.5" /> },
 ];
 
 export default function AddressesPage() {
@@ -225,7 +225,7 @@ export default function AddressesPage() {
     if (found) return { ...found, isPreset: true };
     const customTag = customTags.find(t => t.id === tag || t.name === tag);
     if (customTag) {
-      return { value: customTag.id, label: customTag.name, isPreset: false, tagData: customTag };
+      return { value: customTag.id, label: customTag.name, isPreset: false, tagData: customTag, icon: <Hash className="w-3.5 h-3.5" /> };
     }
     return null;
   };

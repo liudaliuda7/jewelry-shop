@@ -1,6 +1,6 @@
 # 开发环境 Dockerfile for Next.js Jewelry Shop
 
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 
 WORKDIR /app
 
@@ -9,7 +9,6 @@ RUN apk add --no-cache \
     bash \
     curl
 
-# 将仓库复制到容器内的 /app/repo，后续所有操作都基于该目录
 COPY . /app/repo
 
 WORKDIR /app/repo
